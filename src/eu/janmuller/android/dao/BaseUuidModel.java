@@ -49,11 +49,32 @@ public class BaseUuidModel extends AbstractModel<String> implements Serializable
         return getUUID();
     }
 
+    /**
+     * Reimplementace equals zejmena pro potreby spravneho vybrani polozky ve spinneru
+     * Objekty se porovnaji podle id
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof BaseModel) {
+            BaseModel model = (BaseModel) o;
+
+            return id.equals(model.id);
+        } else
+            return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 1;
+        hash = hash * 31 + id.hashCode();
+        hash = hash * 31 + (id == null ? 0 : id.hashCode());
+        return hash;
+    }
+
     @Override
     public String toString() {
-        return "BaseUuidModel{" +
-                "id='" + id + '\'' +
-                '}' + super.toString();
+
+        return id;
     }
 
     /**
