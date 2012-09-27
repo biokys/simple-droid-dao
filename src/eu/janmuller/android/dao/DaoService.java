@@ -113,7 +113,7 @@ public class DaoService {
     /**
      * Metoda vraci asociovany dao class ke specifikovanemu model classu
      */
-    public static <T extends BaseModel> Class getDaoByModel(Class<T> modelClass) {
+    public static <T extends AbstractModel> Class getDaoByModel(Class<T> modelClass) {
 
         for (Map.Entry<Class, DaoModelRelation> entry : relationList.entrySet()) {
 
