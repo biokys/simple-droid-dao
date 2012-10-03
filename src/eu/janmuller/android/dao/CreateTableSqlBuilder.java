@@ -16,14 +16,14 @@ import java.util.List;
  */
 public class CreateTableSqlBuilder {
 
-    private String sql;
+    protected String sql;
 
     private List<String> createIndexCommands;
 
     private String tableName;
 
-    private static final String DATA_TYPE_TEXT = "text";
-    private static final String DATA_TYPE_INTEGER = "integer";
+    protected static final String DATA_TYPE_TEXT = "text";
+    protected static final String DATA_TYPE_INTEGER = "integer";
     private static final String DATA_TYPE_REAL = "real";
     private static final String DATA_TYPE_BLOB = "blob";
 
@@ -120,6 +120,12 @@ public class CreateTableSqlBuilder {
                 + IBaseDao.KEY_MODIFY_DATE + " integer not null";
 
         createIndexCommands = new ArrayList<String>();
+    }
+
+    protected CreateTableSqlBuilder(String tableName) {
+
+        createIndexCommands = new ArrayList<String>();
+        this.tableName = tableName;
     }
 
     /**
