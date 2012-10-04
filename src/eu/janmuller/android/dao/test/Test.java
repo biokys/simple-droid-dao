@@ -1,4 +1,8 @@
-package eu.janmuller.android.dao.api;
+package eu.janmuller.android.dao.test;
+
+import eu.janmuller.android.dao.api.Foo;
+import eu.janmuller.android.dao.api.TestEnum;
+import eu.janmuller.android.dao.api.UUIDId;
 
 import java.util.Date;
 
@@ -12,7 +16,7 @@ public class Test {
 
     public static void test() {
 
-        Foo s = Foo.findObjectById(new StringId("dsfjkladsjf"));
+        Foo s = Foo.findObjectById(new UUIDId("dsfjkladsjf"));
 
         int count = Foo.getCount();
         //String d = s.email;
@@ -25,6 +29,7 @@ public class Test {
         t.name = "Honza";
         t.birthday = new Date();
         t.tEnum = TestEnum.TEST1;
+        //t.creationDate
         Foo f = t.save();
 
         t.getId();
