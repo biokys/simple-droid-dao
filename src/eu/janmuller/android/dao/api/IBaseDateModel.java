@@ -10,7 +10,7 @@ import java.util.Date;
  */
 public interface IBaseDateModel<U> extends Id<U> {
 
-    public Date getCreatedDate();
+    public Date getCreationDate();
 
     public Date getModifiedDate();
 }

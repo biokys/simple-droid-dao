@@ -6,14 +6,14 @@ package eu.janmuller.android.dao.api;
  * Date: 03.10.12
  * Time: 14:43
  */
-public abstract class BaseModel<T, U> extends GenericModel<T> implements Id<U> {
+public abstract class BaseModel<T extends BaseModel> extends GenericModel<T> implements Id {
 
     @InternalFieldType(type = SimpleDaoSystemFieldsEnum.ID)
-    public U id;
+    public Id id;
 
     @Override
-    public U getId() {
+    public Id getId() {
 
-        return null;//id.getId();
+        return id;
     }
 }

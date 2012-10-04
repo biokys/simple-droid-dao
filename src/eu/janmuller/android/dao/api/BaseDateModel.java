@@ -8,7 +8,7 @@ import java.util.Date;
  * Date: 03.10.12
  * Time: 14:45
  */
-public class BaseDateModel<T, U> extends BaseModel<T, U> implements IBaseDateModel<U> {
+public class BaseDateModel<T> extends BaseModel<T> implements IBaseDateModel {
 
     @GenericModel.InternalFieldType(type = GenericModel.SimpleDaoSystemFieldsEnum.CREATE)
     public Date creationDate;
@@ -17,13 +17,15 @@ public class BaseDateModel<T, U> extends BaseModel<T, U> implements IBaseDateMod
     public Date modifiedDate;
 
     @Override
-    public Date getCreatedDate() {
-        return null;
+    public Date getCreationDate() {
+
+        return creationDate;
     }
 
     @Override
     public Date getModifiedDate() {
-        return null;
+
+        return modifiedDate;
     }
 
 }

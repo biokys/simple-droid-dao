@@ -18,20 +18,20 @@ public class CreateTableSqlBuilderExtended extends CreateTableSqlBuilder {
         this.sql = "create table if not exists " + tableName + "(";
     }
 
-    private String createPrimaryColumn(String dataType, String name) {
+    private String createPrimaryColumn(String dataType, String name, boolean autoincrement) {
 
-        return "," + name + " " + dataType + " not null primary key";
+        return "," + name + " " + dataType + " not null primary key" + (autoincrement ? " autoincrement" : "");
     }
 
     public CreateTableSqlBuilderExtended addIntegerPrimaryColumn(String name) {
 
-        this.sql += createPrimaryColumn(DATA_TYPE_INTEGER, name);
+        this.sql += createPrimaryColumn(DATA_TYPE_INTEGER, name, true);
         return this;
     }
 
     public CreateTableSqlBuilderExtended addTextPrimaryColumn(String name) {
 
-        this.sql += createPrimaryColumn(DATA_TYPE_TEXT, name);
+        this.sql += createPrimaryColumn(DATA_TYPE_TEXT, name, false);
         return this;
     }
 

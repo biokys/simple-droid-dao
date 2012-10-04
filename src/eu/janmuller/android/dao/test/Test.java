@@ -16,7 +16,9 @@ public class Test {
 
     public static void test() {
 
-        Foo s = Foo.findObjectById(new UUIDId("dsfjkladsjf"));
+        Foo foo = new Foo();
+
+        Foo.findObjectById(foo, new UUIDId("dsfjkladsjf"));
 
         int count = Foo.getCount();
         //String d = s.email;
@@ -29,6 +31,7 @@ public class Test {
         t.name = "Honza";
         t.birthday = new Date();
         t.tEnum = TestEnum.TEST1;
+
         //t.creationDate
         Foo f = t.save();
 

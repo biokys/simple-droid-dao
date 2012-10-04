@@ -9,8 +9,8 @@ import java.util.Date;
  * Time: 13:48
  */
 @GenericModel.TableName(name = "foo_table")
-@GenericModel.IdType(type = GenericModel.IdTypeEnum.STRING)
-public class Foo extends BaseDateModel<Foo, String> {
+@GenericModel.IdType(type = GenericModel.IdTypeEnum.LONG)
+public class Foo extends BaseModel<Foo> {
 
     @DataType(type = DataTypeEnum.TEXT)
     public String name;
