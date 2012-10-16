@@ -23,6 +23,7 @@ public interface IBaseDao<T extends AbstractModel> {
      */
     public Object insertOrUpdate(T object);
 
+    public Object insert(T object);
     /**
      * Vraci objekt z DB dle zadaneho UUID
      */

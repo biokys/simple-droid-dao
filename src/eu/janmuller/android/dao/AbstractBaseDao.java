@@ -13,8 +13,8 @@ import java.util.*;
 
 /**
  * Skeletalni implementace rozhrani <p>IBaseDao</p>
- * @param <T> Trida reprezentujici datovou entitu, ktera dedi od <p>BaseModel</p>
  *
+ * @param <T> Trida reprezentujici datovou entitu, ktera dedi od <p>BaseModel</p>
  * @see eu.janmuller.android.dao.BaseModel
  * @see eu.janmuller.android.dao.IBaseDao
  */
@@ -129,7 +129,7 @@ public abstract class AbstractBaseDao<T extends AbstractModel> implements IBaseD
             Object o = object.getNewId();
             if (o instanceof String) {
 
-                initialValues.put(KEY_ID, (String)o);
+                initialValues.put(KEY_ID, (String) o);
             }
         }
 
@@ -238,6 +238,38 @@ public abstract class AbstractBaseDao<T extends AbstractModel> implements IBaseD
     }
 
     @Override
+    public Object insert(T object) {
+
+        // namapuji objekt na db objekt
+        ContentValues cv = getObject2DbMapping(object);
+
+        cv.put(KEY_ID, (String) object.getId());
+        cv.put(KEY_CREATION_DATE, ((AbstractModel)object).created.getTime());
+        cv.put(KEY_MODIFY_DATE, ((AbstractModel)object).modified.getTime());
+        try {
+            // pokud nema objekt vyplnene id, pak vytvarime novy zaznam do DB
+
+            // insertujem do db
+            long id = getSQLiteDatabase().insertOrThrow(getTableNameWithCheck(), null, cv);
+
+            // pokud nedoslo k chybe
+            if (id != -1) {
+
+                // vratime vygenerovane id
+                return cv.get(KEY_ID);
+            } else {
+
+                // jinak vyhodime runtime exception
+                throw new RuntimeException("insert failed");
+            }
+
+        } catch (SQLiteConstraintException sce) {
+
+            throw new DaoConstraintException(DaoConstraintException.ConstraintsExceptionType.INSERT, sce);
+        }
+    }
+
+    @Override
     public Cursor retrieveAllInCursor() {
 
         String selectQuery = "SELECT *, rowid _id FROM " + getTableNameWithCheck();
@@ -257,10 +289,9 @@ public abstract class AbstractBaseDao<T extends AbstractModel> implements IBaseD
      * Metoda pro ziskani seznamu objektu.
      * Metoda interne vola metodu <p>retrieveByQueryInCursor</p>
      *
-     * @see eu.janmuller.android.dao.AbstractBaseDao#retrieveByQueryInCursor
-     *
      * @param whereClause klasicka SQL where klauzule
      * @return List objektu
+     * @see eu.janmuller.android.dao.AbstractBaseDao#retrieveByQueryInCursor
      */
     @Override
     public List<T> retrieveByQuery(String whereClause) {
