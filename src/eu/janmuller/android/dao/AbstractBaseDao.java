@@ -310,6 +310,21 @@ public abstract class AbstractBaseDao<T extends AbstractModel> implements IBaseD
     }
 
     @Override
+    public int retrieveCountByQuery(String whereClause) {
+
+        String selectQuery = "SELECT COUNT(1) FROM " + getTableNameWithCheck() + " WHERE " + whereClause;
+
+        Cursor c = getSQLiteDatabase().rawQuery(selectQuery, null);
+
+        if (c == null) {
+
+            return 0;
+        }
+
+        return c.moveToFirst() ? c.getInt(0) : 0;
+    }
+
+    @Override
     public Map<Object, T> getAllObjectsAsMap() {
 
         Map<Object, T> map = new HashMap<Object, T>();

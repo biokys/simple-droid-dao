@@ -52,6 +52,11 @@ public interface IBaseDao<T extends AbstractModel> {
     public Cursor retrieveByQueryInCursor(String whereClause);
 
     /**
+     * Vraci pocet zaznamu vyhovujicich zadanemu query
+     */
+    public int retrieveCountByQuery(String whereClause);
+
+    /**
      * Vraci mapu objektu, kde klicem je UUID id objektu a hodnotou je cely objekt
      */
     public Map<Object, T> getAllObjectsAsMap();
