@@ -8,9 +8,11 @@ package eu.janmuller.android.dao.api;
  */
 final public class SimpleDroidDaoFactory {
 
-    public ISimpleDroidDaoService getInstance() {
+    final static private ISimpleDroidDaoService INSTANCE = new SimpleDroidDaoService();
 
-        return null;
+    public static ISimpleDroidDaoService getInstance() {
+
+        return INSTANCE;
     }
 
 }

@@ -5,8 +5,6 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
-import eu.janmuller.android.dao.CreateTableSqlBuilderExtended;
-import eu.janmuller.android.dao.DaoService;
 import eu.janmuller.android.dao.exceptions.DaoConstraintException;
 
 import java.lang.annotation.ElementType;
@@ -112,6 +110,11 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
                                 case LONG:
                                     id = new LongId(0l);
                                     cv.put(ift.type().getName(), (Long)id.getId());
+                                    try {
+                                        field.set(this, new LongId((Long)id.getId()));
+                                    } catch (IllegalAccessException e) {
+                                        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                                    }
                                     break;
                                 case UUID:
                                     id = new UUIDId();
@@ -372,7 +375,8 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
      */
     protected static SQLiteDatabase getSQLiteDatabase() {
 
-        return DaoService.getDatabaseAdapter().getOpenedDatabase();
+        ISimpleDroidDaoService dds = SimpleDroidDaoFactory.getInstance();
+        return ((SimpleDroidDaoService)dds).getDao().getOpenedDatabase();
     }
 
     @Override
@@ -439,7 +443,7 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
         return null;
     }
 
-    static <T extends BaseModel> void createTable(Class<T> clazz) {
+    public static <T extends BaseModel> void createTable(Class<T> clazz) {
 
         getSQLiteDatabase().execSQL(getCreateTableSQL(clazz));
     }
@@ -525,24 +529,24 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
-    @interface InternalFieldType {
+    public @interface InternalFieldType {
 
         SimpleDaoSystemFieldsEnum type();
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
-    @interface Index {
+    public @interface Index {
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
-    @interface Unique {
+    public @interface Unique {
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
-    @interface NotNull {
+    public @interface NotNull {
     }
 
 
