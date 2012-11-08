@@ -6,12 +6,14 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
 import eu.janmuller.android.dao.exceptions.DaoConstraintException;
+import org.w3c.dom.UserDataHandler;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 /**
@@ -27,26 +29,29 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
         return 0;
     }
 
-    public static void findObjectById(BaseModel model, Id id) {
+    public static <T extends BaseModel> T findObjectById(Class<T> clazz, Id id) {
 
-        Cursor cursor = getSQLiteDatabase().query(getTableName(model.getClass()),null
+        T object = null;
+        Cursor cursor = getSQLiteDatabase().query(getTableName(clazz),null
                 , SimpleDaoSystemFieldsEnum.ID + "=?",
                 new String[]{id.getId().toString()}, null, null, null, null);
 
         if (cursor != null && cursor.moveToFirst()) {
 
-            ((GenericModel)model).getObjectFromCursor(cursor);
+            object = getObjectFromCursor(clazz, cursor);
 
             cursor.close();
 
         }
-
+        return object;
     }
 
-    public static <U extends BaseModel> List<U> getAllObjects() {
+    public static <U extends BaseModel> List<U> getAllObjects(Class<U> clazz) {
 
         List<U> list = new ArrayList<U>();
-        return list;
+
+        Cursor c = getSQLiteDatabase().rawQuery("SELECT * FROM " + getTableName(clazz), null);
+        return getListFromCursor(clazz, c);
     }
 
     private ContentValues getContentValuesFromObject() {
@@ -109,7 +114,7 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
 
                                 case LONG:
                                     id = new LongId(0l);
-                                    cv.put(ift.type().getName(), (Long)id.getId());
+                                    //cv.put(ift.type().getName(), (Long)id.getId());
                                     try {
                                         field.set(this, new LongId((Long)id.getId()));
                                     } catch (IllegalAccessException e) {
@@ -146,13 +151,13 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
         return cv;
     }
 
-    private void getObjectFromCursor(Cursor cursor) {
+    private static <T extends BaseModel> T getObjectFromCursor(Class<T> clazz, Cursor cursor) {
 
-       // T instance = null;
+        T instance = null;
         try {
-            //instance = (T) ((Class) ((ParameterizedType) this.getClass().getGenericSuperclass()).getActualTypeArguments()[0]).newInstance();
+            instance = (T) ((Class) ((ParameterizedType) clazz.getGenericSuperclass()).getActualTypeArguments()[0]).newInstance();
 
-            for (Field field : this.getClass().getFields()) {
+            for (Field field : clazz.getFields()) {
 
                 int columnIndex = cursor.getColumnIndex(field.getName());
                 DataType dt = field.getAnnotation(DataType.class);
@@ -161,24 +166,24 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
                     switch (dt.type()) {
 
                         case BLOB:
-                            field.set(this, cursor.getBlob(columnIndex));
+                            field.set(instance, cursor.getBlob(columnIndex));
                             break;
                         case DOUBLE:
-                            field.set(this, cursor.getDouble(columnIndex));
+                            field.set(instance, cursor.getDouble(columnIndex));
                             break;
                         case INTEGER:
-                            field.set(this, cursor.getInt(columnIndex));
+                            field.set(instance, cursor.getInt(columnIndex));
                             break;
                         case TEXT:
-                            field.set(this, cursor.getString(columnIndex));
+                            field.set(instance, cursor.getString(columnIndex));
                             break;
                         case DATE:
-                            field.set(this, new Date(cursor.getLong(columnIndex)));
+                            field.set(instance, new Date(cursor.getLong(columnIndex)));
                             break;
                         case ENUM:
                             int i = cursor.getInt(columnIndex);
                             Class c = field.getType();
-                            field.set(this, c.getFields()[i].get(this));
+                            field.set(instance, c.getFields()[i].get(instance));
                             break;
                     }
                 }
@@ -190,18 +195,18 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
                         case CREATE:
                         case MODIFY:
                             Date date = new Date(cursor.getLong(columnIndex));
-                            field.set(this, date);
+                            field.set(instance, date);
                             break;
                         case ID:
 
                             // pokud jeste neni idcko, pak se jedna o novy objekt
-                            switch (getIdType(((T)this).getClass())) {
+                            switch (getIdType((instance).getClass())) {
 
                                 case LONG:
-                                    field.set(this, new LongId(cursor.getLong(columnIndex)));
+                                    field.set(instance, new LongId(cursor.getLong(columnIndex)));
                                     break;
                                 case UUID:
-                                    field.set(this, new UUIDId(cursor.getString(columnIndex)));
+                                    field.set(instance, new UUIDId(cursor.getString(columnIndex)));
                                     break;
                                 default:
                                     throw new IllegalStateException("you shouldnt be here");
@@ -214,12 +219,15 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
         } catch (IllegalAccessException e) {
 
             e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
 
+        return instance;
     }
 
 
-    private void getObjectFromContentValues(Map<String, Object> cv) {
+    /*private void getObjectFromContentValues(Map<String, Object> cv) {
 
         //T instance = null;
         try {
@@ -281,7 +289,7 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
 
             e.printStackTrace();
         }
-    }
+    }*/
 
     private Object getValueFromField(Field f) {
 
@@ -443,9 +451,47 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
         return null;
     }
 
+
+    protected static <T extends BaseModel> List<T> getListFromCursor(Class<T> clazz, Cursor cursor) {
+
+        List<T> list = new ArrayList<T>();
+
+        // pokud je cursor nullovy, pak vratime prazdny seznam
+        if (cursor == null) {
+
+            return list;
+        }
+
+        // pokud v kurzoru je alespon jeden zaznam
+        if (cursor.moveToFirst()) {
+
+            // prochazej pres vsechny zaznamy v cursoru dokud muzes
+            do {
+
+                // vytvor objekt
+
+                T object = getObjectFromCursor(clazz, cursor);
+
+                // a pridej ho do seznamu
+                list.add(object);
+
+            } while (cursor.moveToNext());
+        }
+
+        // uzavreme cursor
+        cursor.close();
+
+        return list;
+    }
+
     public static <T extends BaseModel> void createTable(Class<T> clazz) {
 
         getSQLiteDatabase().execSQL(getCreateTableSQL(clazz));
+    }
+
+    public static <T extends BaseModel> void deleteTable(Class<T> clazz) {
+
+        getSQLiteDatabase().execSQL("drop table if exists " + getTableName(clazz));
     }
 
     public void delete() {

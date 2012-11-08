@@ -1,7 +1,7 @@
 package eu.janmuller.android.dao.api;
 
 import android.content.Context;
-import eu.janmuller.android.dao.DatabaseAdapter;
+import eu.janmuller.android.dao.api.DatabaseAdapter;
 
 /**
  * Created with IntelliJ IDEA.

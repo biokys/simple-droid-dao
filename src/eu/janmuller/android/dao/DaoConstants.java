@@ -6,7 +6,7 @@ package eu.janmuller.android.dao;
  * Date: 8/14/12
  * Time: 9:20 AM
  */
-final class DaoConstants {
+final public class DaoConstants {
 
     public static final String LOG_TAG = "dao";
 

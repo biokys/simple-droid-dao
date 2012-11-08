@@ -18,7 +18,7 @@ public class Test {
 
         Foo foo = new Foo();
 
-        Foo.findObjectById(foo, new UUIDId("dsfjkladsjf"));
+        //Foo.findObjectById(foo, new UUIDId("dsfjkladsjf"));
 
         int count = Foo.getCount();
         //String d = s.email;
