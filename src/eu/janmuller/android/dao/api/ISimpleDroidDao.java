@@ -10,7 +10,7 @@ public interface ISimpleDroidDao<T> {
 
     public T save();
 
-    public T load();
+    public boolean delete();
 
-    public void delete();
+    public boolean deleteAll();
 }

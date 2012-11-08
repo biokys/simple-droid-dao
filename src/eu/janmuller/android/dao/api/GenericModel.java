@@ -494,8 +494,37 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
         getSQLiteDatabase().execSQL("drop table if exists " + getTableName(clazz));
     }
 
-    public void delete() {
+    public boolean delete() {
 
+        TableName tn = getClass().getAnnotation(TableName.class);
+
+        if (tn == null) {
+
+            throw new IllegalStateException("no table name annotation defined!");
+        }
+
+        BaseModel bm = (BaseModel) this;
+
+        boolean result =  getSQLiteDatabase().delete(tn.name(), SimpleDaoSystemFieldsEnum.ID + "=?",
+                new String[]{bm.getId().getId().toString()}) > 0;
+
+
+        bm.id = null;
+
+        return result;
+
+    }
+
+    public boolean deleteAll() {
+
+        TableName tn = getClass().getAnnotation(TableName.class);
+
+        if (tn == null) {
+
+            throw new IllegalStateException("no table name annotation defined!");
+        }
+
+        return getSQLiteDatabase().delete(tn.name(), "1", null) > 0;
     }
 
     private static <T extends BaseModel> String getTableName(Class<T> clazz) {
