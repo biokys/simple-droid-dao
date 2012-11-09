@@ -1,9 +1,7 @@
 package eu.janmuller.android.dao.api;
 
-import eu.janmuller.android.dao.IBaseDao;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -15,18 +13,18 @@ import java.util.List;
  * Trida slouzi pro vytvareni SQL prikazu, pomoci ktereho se vytvori tabulka,
  * vytvori se sloupce tabulky, cizy klice, indexy
  */
-public class CreateTableSqlBuilder {
+class CreateTableSqlBuilder {
 
-    protected String sql;
+    private String mSql;
 
-    protected List<String> partialSqls = new ArrayList<String>();
+    private List<String> mPartialSqls = new ArrayList<String>();
 
-    private List<String> createIndexCommands;
+    private List<String> mCreateIndexCommands;
 
-    private String tableName;
+    private String mTableName;
 
-    protected static final String DATA_TYPE_TEXT = "text";
-    protected static final String DATA_TYPE_INTEGER = "integer";
+    private static final String DATA_TYPE_TEXT = "text";
+    private static final String DATA_TYPE_INTEGER = "integer";
     private static final String DATA_TYPE_REAL = "real";
     private static final String DATA_TYPE_BLOB = "blob";
 
@@ -85,50 +83,11 @@ public class CreateTableSqlBuilder {
         }
     }
 
-    public enum IDTypes {
-
-        UUID,
-        LONG_AUTOINCREMENT
-    }
-
-    /**
-     * Konstruktor
-     *
-     * @param tableName Jmeno tabulky, kterou budeme vytvaret
-     */
-    CreateTableSqlBuilder(String tableName, IDTypes idTypes) {
-
-        this.tableName = tableName;
-
-        String idString;
-
-        switch (idTypes) {
-
-            case LONG_AUTOINCREMENT:
-
-                idString = " integer not null primary key autoincrement, ";
-                break;
-            case UUID:
-
-                idString = " text not null primary key, ";
-                break;
-            default:
-
-                throw new IllegalStateException("You didnt specified primary id type");
-        }
-
-        this.sql = "create table if not exists " + tableName + "("
-                + IBaseDao.KEY_ID + idString
-                + IBaseDao.KEY_CREATION_DATE + " integer not null, "
-                + IBaseDao.KEY_MODIFY_DATE + " integer not null";
-
-        createIndexCommands = new ArrayList<String>();
-    }
-
     protected CreateTableSqlBuilder(String tableName) {
 
-        createIndexCommands = new ArrayList<String>();
-        this.tableName = tableName;
+        mCreateIndexCommands = new ArrayList<String>();
+        mTableName = tableName;
+        mSql = "create table if not exists " + tableName + "(";
     }
 
     /**
@@ -221,7 +180,7 @@ public class CreateTableSqlBuilder {
 
     private void createColumn(String dataType, String name, boolean notNull) {
 
-        partialSqls.add(name + " " + dataType + " " + (notNull ? "not null" : ""));
+        mPartialSqls.add(name + " " + dataType + " " + (notNull ? "not null" : ""));
     }
 
     /**
@@ -279,7 +238,7 @@ public class CreateTableSqlBuilder {
 
         cascadeString = cascadeDeleteString + cascadeUpdateString;
 
-        this.sql += ", CONSTRAINT FK_" + attributeName + "__" + foreignTableName + "_" + foreignAttribute + " FOREIGN KEY(" + attributeName + ") REFERENCES " +
+        this.mSql += ", CONSTRAINT FK_" + attributeName + "__" + foreignTableName + "_" + foreignAttribute + " FOREIGN KEY(" + attributeName + ") REFERENCES " +
                 foreignTableName + "(" + foreignAttribute + ")" + cascadeString;
         return this;
     }
@@ -291,9 +250,9 @@ public class CreateTableSqlBuilder {
      */
     public CreateTableSqlBuilder addSimpleIndex(String attributeName) {
 
-        String createIndexCommand = "CREATE INDEX " + this.tableName + "_" + attributeName + "_idx ON " + this.tableName + "(" + attributeName + ");";
+        String createIndexCommand = "CREATE INDEX " + this.mTableName + "_" + attributeName + "_idx ON " + this.mTableName + "(" + attributeName + ");";
 
-        this.createIndexCommands.add(createIndexCommand);
+        this.mCreateIndexCommands.add(createIndexCommand);
 
         return this;
     }
@@ -327,17 +286,36 @@ public class CreateTableSqlBuilder {
             throw new IllegalStateException("no attributes defined");
         } else {
 
-            attributeSql = join(attributeNames, ',');
+            attributeSql = join(',', attributeNames);
         }
 
         if (conflict != null) {
 
             conflictSql = " ON CONFLICT " + conflict.getConflict();
         }
-        this.sql += ", UNIQUE(" + attributeSql + ")" + conflictSql;
+        this.mSql += ", UNIQUE(" + attributeSql + ")" + conflictSql;
 
         return this;
     }
+
+    private void createPrimaryColumn(String dataType, String name, boolean autoincrement) {
+
+        mPartialSqls.add(name + " " + dataType + " not null primary key" + (autoincrement ? " autoincrement " : " "));
+    }
+
+    public CreateTableSqlBuilder addIntegerPrimaryColumn(String name) {
+
+        createPrimaryColumn(DATA_TYPE_INTEGER, name, true);
+        return this;
+    }
+
+    public CreateTableSqlBuilder addTextPrimaryColumn(String name) {
+
+        createPrimaryColumn(DATA_TYPE_TEXT, name, false);
+        return this;
+    }
+
+
 
     /**
      * Metoda vytvori vysledne sql
@@ -346,28 +324,23 @@ public class CreateTableSqlBuilder {
      */
     String create() {
 
-        String[] partials = partialSqls.toArray(new String[partialSqls.size()]);
-        sql += join(partials, ',');
-        sql += ");";
+        String[] partials = mPartialSqls.toArray(new String[mPartialSqls.size()]);
+        mSql += join(',', partials);
+        mSql += ");";
 
-        if (!createIndexCommands.isEmpty()) {
+        if (!mCreateIndexCommands.isEmpty()) {
 
-            for (String command : createIndexCommands) {
+            for (String command : mCreateIndexCommands) {
 
-                sql += command;
+                mSql += command;
             }
         }
 
-        partialSqls.clear();
-        return sql;
+        mPartialSqls.clear();
+        return mSql;
     }
 
-    private String join(char separator, String... strings) {
-
-        return join(strings, separator);
-    }
-
-    private String join(String[] array, char separator) {
+    private String join(char separator, String... array) {
 
         if (array == null) {
             return null;

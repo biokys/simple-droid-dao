@@ -1,7 +1,6 @@
 package eu.janmuller.android.dao.api;
 
 import android.content.Context;
-import eu.janmuller.android.dao.api.DatabaseAdapter;
 
 /**
  * Created with IntelliJ IDEA.
@@ -11,9 +10,9 @@ import eu.janmuller.android.dao.api.DatabaseAdapter;
  */
 public class SimpleDroidDaoService implements ISimpleDroidDaoService {
 
-    DatabaseAdapter databaseAdapter;
+    AndroidSqliteDatabaseAdapter databaseAdapter;
 
-    DatabaseAdapter getDao() {
+    AndroidSqliteDatabaseAdapter getDao() {
 
         if (databaseAdapter == null) {
 
@@ -25,6 +24,6 @@ public class SimpleDroidDaoService implements ISimpleDroidDaoService {
     @Override
     public void setDao(Context context, String dbName, int version) {
 
-        databaseAdapter = new DatabaseAdapter(context, dbName, version);
+        databaseAdapter = new AndroidSqliteDatabaseAdapter(context, dbName, version);
     }
 }

@@ -1,4 +1,4 @@
-package eu.janmuller.android.dao.api;
+package eu.janmuller.android.dao.api.id;
 
 import java.util.UUID;
 
@@ -11,7 +11,7 @@ import java.util.UUID;
 public class UUIDId extends AbstractId<String> {
 
     // pomocna promenna, ktera slouzi jako pomocny prostredek k rozpoznani, zda objekt ulozit, nebo updatovat
-    boolean create;
+    public boolean create;
 
     public UUIDId(String id) {
         super(id);

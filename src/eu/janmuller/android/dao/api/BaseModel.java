@@ -1,5 +1,7 @@
 package eu.janmuller.android.dao.api;
 
+import eu.janmuller.android.dao.api.id.Id;
+
 /**
  * Created with IntelliJ IDEA.
  * Coder: Jan Müller

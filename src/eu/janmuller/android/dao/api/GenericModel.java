@@ -5,6 +5,9 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
+import eu.janmuller.android.dao.api.id.Id;
+import eu.janmuller.android.dao.api.id.LongId;
+import eu.janmuller.android.dao.api.id.UUIDId;
 import eu.janmuller.android.dao.exceptions.DaoConstraintException;
 
 import java.lang.annotation.ElementType;
@@ -21,14 +24,16 @@ import java.util.*;
  * Date: 03.10.12
  * Time: 13:48
  */
-public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidDao<T> {
+public abstract class GenericModel<T extends BaseModel> {
+
+
+
 
     public static <T extends BaseModel> T findObjectById(Class<T> clazz, Id id) {
 
         T object = null;
-        Cursor cursor = getSQLiteDatabase().query(getTableName(clazz),null
-                , SimpleDaoSystemFieldsEnum.ID + "=?",
-                new String[]{id.getId().toString()}, null, null, null, null);
+        Cursor cursor = getSQLiteDatabase().query("SELECT * FROM " + getTableName(clazz)
+                + " WHERE " + SimpleDaoSystemFieldsEnum.ID + "=?", new String[]{id.getId().toString()});
 
         if (cursor != null && cursor.moveToFirst()) {
 
@@ -42,7 +47,7 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
 
     public static <U extends BaseModel> List<U> getAllObjects(Class<U> clazz) {
 
-        Cursor c = getSQLiteDatabase().rawQuery("SELECT * FROM " + getTableName(clazz), null);
+        Cursor c = getSQLiteDatabase().query("SELECT * FROM " + getTableName(clazz), null);
         return getListFromCursor(clazz, c);
     }
 
@@ -304,7 +309,7 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
 
     private static <T extends BaseModel> String getCreateTableSQL(Class<T> clazz) {
 
-        CreateTableSqlBuilderExtended ctsb = new CreateTableSqlBuilderExtended(getTableName(clazz));
+        CreateTableSqlBuilder ctsb = new CreateTableSqlBuilder(getTableName(clazz));
         for (Field field : clazz.getFields()) {
 
             DataType dt = field.getAnnotation(DataType.class);
@@ -373,13 +378,11 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
     /**
      * Vraci instanci objektu pro praci s DB
      */
-    protected static SQLiteDatabase getSQLiteDatabase() {
+    protected static IDatabaseProvider<Cursor> getSQLiteDatabase() {
 
-        ISimpleDroidDaoService dds = SimpleDroidDaoFactory.getInstance();
-        return ((SimpleDroidDaoService)dds).getDao().getOpenedDatabase();
+        return DatabaseFactory.getInstance().getDatabaseProvider();
     }
 
-    @Override
     public T save() {
 
         // namapuji objekt na db objekt
@@ -394,7 +397,7 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
             if ((object.id instanceof UUIDId && ((UUIDId)object.id).create) || (object.id instanceof LongId && ((LongId)object.id).getId() == 0l)) {
 
                 // insertujem do db
-                long id = getSQLiteDatabase().insertOrThrow(getTableName(object.getClass()), null, cv);
+                long id = getSQLiteDatabase().insertOrThrow(getTableName(object.getClass()), cv);
 
                 // pokud nedoslo k chybe
                 if (id != -1) {
@@ -414,7 +417,7 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
             } else {
 
                 // pokud jiz existuje id, pak provedem update
-                long updatedID = getSQLiteDatabase().update(getTableName(object.getClass()), cv, SimpleDaoSystemFieldsEnum.ID.getName() + "='" + object.getId() + "'", null);
+                long updatedID = getSQLiteDatabase().update(getTableName(object.getClass()), cv, SimpleDaoSystemFieldsEnum.ID.getName() + "='" + object.getId() + "'");
 
                 isUpdate = true;
 
@@ -436,13 +439,6 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
                     DaoConstraintException.ConstraintsExceptionType.INSERT, sce);
         }
     }
-
-
-    public T load() {
-
-        return null;
-    }
-
 
     protected static <T extends BaseModel> List<T> getListFromCursor(Class<T> clazz, Cursor cursor) {
 
@@ -486,7 +482,7 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
         getSQLiteDatabase().execSQL("drop table if exists " + getTableName(clazz));
     }
 
-    public boolean delete() {
+    public void delete() {
 
         TableName tn = getClass().getAnnotation(TableName.class);
 
@@ -497,26 +493,24 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
 
         BaseModel bm = (BaseModel) this;
 
-        boolean result =  getSQLiteDatabase().delete(tn.name(), SimpleDaoSystemFieldsEnum.ID + "=?",
-                new String[]{bm.getId().getId().toString()}) > 0;
+        getSQLiteDatabase().query("DELETE FROM " + tn.name() + " WHERE " + SimpleDaoSystemFieldsEnum.ID + "=?",
+                new String[]{bm.getId().getId().toString()});
 
 
         bm.id = null;
 
-        return result;
-
     }
 
-    public boolean deleteAll() {
+    public static <T extends BaseModel> void deleteAll(Class<T> clazz) {
 
-        TableName tn = getClass().getAnnotation(TableName.class);
+        TableName tn = clazz.getAnnotation(TableName.class);
 
         if (tn == null) {
 
             throw new IllegalStateException("no table name annotation defined!");
         }
 
-        return getSQLiteDatabase().delete(tn.name(), "1", null) > 0;
+        getSQLiteDatabase().query("DELETE FROM " + tn.name(), null);
     }
 
     private static <T extends BaseModel> String getTableName(Class<T> clazz) {

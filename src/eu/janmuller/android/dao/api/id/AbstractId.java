@@ -1,4 +1,6 @@
-package eu.janmuller.android.dao.api;
+package eu.janmuller.android.dao.api.id;
+
+import eu.janmuller.android.dao.api.id.Id;
 
 /**
  * Created with IntelliJ IDEA.
