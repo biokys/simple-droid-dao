@@ -6,7 +6,6 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
 import eu.janmuller.android.dao.exceptions.DaoConstraintException;
-import org.w3c.dom.UserDataHandler;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -23,11 +22,6 @@ import java.util.*;
  * Time: 13:48
  */
 public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidDao<T> {
-
-    public static int getCount() {
-
-        return 0;
-    }
 
     public static <T extends BaseModel> T findObjectById(Class<T> clazz, Id id) {
 
@@ -47,8 +41,6 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
     }
 
     public static <U extends BaseModel> List<U> getAllObjects(Class<U> clazz) {
-
-        List<U> list = new ArrayList<U>();
 
         Cursor c = getSQLiteDatabase().rawQuery("SELECT * FROM " + getTableName(clazz), null);
         return getListFromCursor(clazz, c);
@@ -114,11 +106,11 @@ public abstract class GenericModel<T extends BaseModel> implements ISimpleDroidD
 
                                 case LONG:
                                     id = new LongId(0l);
-                                    //cv.put(ift.type().getName(), (Long)id.getId());
                                     try {
                                         field.set(this, new LongId((Long)id.getId()));
                                     } catch (IllegalAccessException e) {
-                                        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+
+                                        throw new RuntimeException("cannot set field id");
                                     }
                                     break;
                                 case UUID:
