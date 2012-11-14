@@ -1,39 +1,73 @@
 package eu.janmuller.android.dao.api;
 
 
-import android.content.ContentValues;
 import android.content.Context;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 import eu.janmuller.android.dao.DaoConstants;
-import eu.janmuller.android.dao.IDatabaseAdapter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Database helper class used to manage the creation and upgrading of your database. This class also usually provides
  * the DAOs used by the other classes.
  */
-public final class AndroidSqliteDatabaseAdapter implements IDatabaseAdapter {
+public final class AndroidSqliteDatabaseAdapter {
 
-    private static String mDatabaseName;
+    private String mDatabaseName;
 
-    private static int mDatabaseVersion;
+    private int mDatabaseVersion;
 
     private DatabaseHelper databaseHelper;
 
     private Context mContext;
 
-    public AndroidSqliteDatabaseAdapter(Context context, String databaseName, int version) {
+    private IUpgradeHandler mUpgradeHandler;
+
+    private static AndroidSqliteDatabaseAdapter INSTANCE;
+
+    private List<Class<? extends BaseModel>> mModelClasses = new ArrayList<Class<? extends BaseModel>>();
+
+
+    private AndroidSqliteDatabaseAdapter(Context context, String databaseName, int version, IUpgradeHandler upgradeHandler) {
 
         mDatabaseName = databaseName;
         mDatabaseVersion = version;
         mContext = context;
+        mUpgradeHandler = upgradeHandler;
+
+    }
+
+    public static synchronized void initialize(Context context, String databaseName, int version, IUpgradeHandler upgradeHandler) {
+
+        if (INSTANCE == null) {
+
+            INSTANCE = new AndroidSqliteDatabaseAdapter(context, databaseName, version, upgradeHandler);
+        }
+    }
+
+    public void registerClass(Class<? extends BaseModel> clazz) {
+
+        mModelClasses.add(clazz);
+    }
+
+    public void start() {
 
         databaseHelper = new DatabaseHelper(this);
     }
 
-    public static class DatabaseHelper extends SQLiteOpenHelper {
+    public static AndroidSqliteDatabaseAdapter getInstance() {
+
+        if (INSTANCE == null) {
+
+            throw new IllegalStateException("you have to call initialize method before");
+        }
+        return INSTANCE;
+    }
+
+    class DatabaseHelper extends SQLiteOpenHelper {
 
         AndroidSqliteDatabaseAdapter mDatabaseAdapter;
 
@@ -49,6 +83,11 @@ public final class AndroidSqliteDatabaseAdapter implements IDatabaseAdapter {
             Log.i(DaoConstants.LOG_TAG, "Creating tables...");
 
 
+            for (Class<? extends BaseModel> model : mModelClasses) {
+
+                createTable(db, model);
+            }
+
 
             Log.i(DaoConstants.LOG_TAG, "tables created succesfully");
 
@@ -59,8 +98,17 @@ public final class AndroidSqliteDatabaseAdapter implements IDatabaseAdapter {
 
             Log.i(DaoConstants.LOG_TAG, "Upgrading database from version " + oldVersion + " to " + newVersion + ")");
 
+            if (mUpgradeHandler == null) {
+                for (Class<? extends BaseModel> model : mModelClasses) {
 
+                    dropTable(db, model);
+                    createTable(db, model);
+                }
 
+            } else {
+
+                mUpgradeHandler.onUpgrade(db, oldVersion, newVersion);
+            }
         }
 
         @Override
@@ -76,37 +124,23 @@ public final class AndroidSqliteDatabaseAdapter implements IDatabaseAdapter {
         }
     }
 
-    @Override
-    public IDatabaseProvider getDatabaseProvider() {
-        return new IDatabaseProvider<Cursor>() {
-            @Override
-            public Cursor query(String whereSql, String[] params) {
-                return getOpenedDatabase().rawQuery(whereSql, params);
-            }
+    static <T extends BaseModel> void createTable(SQLiteDatabase db, Class<T> clazz) {
 
-            @Override
-            public void execSQL(String sql) {
-
-                getOpenedDatabase().execSQL(sql);
-            }
-
-            @Override
-            public long insertOrThrow(String name, ContentValues cv) {
-
-                return getOpenedDatabase().insertOrThrow(name, null, cv);
-            }
-
-            @Override
-            public long update(String name, ContentValues cv, String id) {
-
-                return getOpenedDatabase().update(name, cv, id, null);
-            }
-        };
+        db.execSQL(GenericModel.getCreateTableSQL(clazz));
     }
 
+    static <T extends BaseModel> void dropTable(SQLiteDatabase db, Class<T> clazz) {
 
+        db.execSQL("drop table if exists " + GenericModel.getTableName(clazz));
+    }
 
-    public SQLiteDatabase getOpenedDatabase() {
+    public SQLiteDatabase getOpenedDatabase(Class clazz) {
+
+        /*if (!mModelClasses.contains(clazz)) {
+
+            throw new IllegalStateException("You have to call register method before for class " + clazz);
+        }*/
+
         return databaseHelper.getWritableDatabase();
     }
 

@@ -26,13 +26,10 @@ import java.util.*;
  */
 public abstract class GenericModel<T extends BaseModel> {
 
-
-
-
     public static <T extends BaseModel> T findObjectById(Class<T> clazz, Id id) {
 
         T object = null;
-        Cursor cursor = getSQLiteDatabase().query("SELECT * FROM " + getTableName(clazz)
+        Cursor cursor = getSQLiteDatabase(clazz).rawQuery("SELECT * FROM " + getTableName(clazz)
                 + " WHERE " + SimpleDaoSystemFieldsEnum.ID + "=?", new String[]{id.getId().toString()});
 
         if (cursor != null && cursor.moveToFirst()) {
@@ -47,8 +44,13 @@ public abstract class GenericModel<T extends BaseModel> {
 
     public static <U extends BaseModel> List<U> getAllObjects(Class<U> clazz) {
 
-        Cursor c = getSQLiteDatabase().query("SELECT * FROM " + getTableName(clazz), null);
+        Cursor c = getAllObjectsInCursor(clazz);
         return getListFromCursor(clazz, c);
+    }
+
+    public static <U extends BaseModel> Cursor getAllObjectsInCursor(Class<U> clazz) {
+
+        return getSQLiteDatabase(clazz).rawQuery("SELECT *, rowid _id FROM " + getTableName(clazz), null);
     }
 
     private ContentValues getContentValuesFromObject() {
@@ -65,16 +67,16 @@ public abstract class GenericModel<T extends BaseModel> {
                 switch (dt.type()) {
 
                     case BLOB:
-                        cv.put(field.getName(), (byte[])getValueFromField(field));
+                        cv.put(field.getName(), (byte[]) getValueFromField(field));
                         break;
                     case INTEGER:
-                        cv.put(field.getName(), (Integer)getValueFromField(field));
+                        cv.put(field.getName(), (Integer) getValueFromField(field));
                         break;
                     case TEXT:
-                        cv.put(field.getName(), (String)getValueFromField(field));
+                        cv.put(field.getName(), (String) getValueFromField(field));
                         break;
                     case DOUBLE:
-                        cv.put(field.getName(), (Double)getValueFromField(field));
+                        cv.put(field.getName(), (Double) getValueFromField(field));
                         break;
                     case DATE:
                         cv.put(field.getName(), ((Date) getValueFromField(field)).getTime());
@@ -87,19 +89,25 @@ public abstract class GenericModel<T extends BaseModel> {
 
             InternalFieldType ift = field.getAnnotation(InternalFieldType.class);
             if (ift != null) {
+
+                BaseDateModel bdm;
+
                 switch (ift.type()) {
 
                     case CREATE:
 
-                        BaseDateModel bdm = (BaseDateModel) this;
+                        bdm = (BaseDateModel) this;
                         if (bdm.creationDate == null) {
 
                             cv.put(ift.type().getName(), now.getTime());
+                            bdm.creationDate = now;
                         }
                         break;
                     case MODIFY:
-                        cv.put(ift.type().getName(), now.getTime());
 
+                        bdm = (BaseDateModel) this;
+                        cv.put(ift.type().getName(), now.getTime());
+                        bdm.modifiedDate = now;
                         break;
                     case ID:
                         BaseModel bm = (BaseModel) this;
@@ -107,12 +115,12 @@ public abstract class GenericModel<T extends BaseModel> {
                         Id id;
                         // pokud jeste neni idcko, pak se jedna o novy objekt
                         if (bm.id == null) {
-                            switch (getIdType(((T)this).getClass())) {
+                            switch (getIdType(((T) this).getClass())) {
 
                                 case LONG:
                                     id = new LongId(0l);
                                     try {
-                                        field.set(this, new LongId((Long)id.getId()));
+                                        field.set(this, new LongId((Long) id.getId()));
                                     } catch (IllegalAccessException e) {
 
                                         throw new RuntimeException("cannot set field id");
@@ -120,8 +128,9 @@ public abstract class GenericModel<T extends BaseModel> {
                                     break;
                                 case UUID:
                                     id = new UUIDId();
-                                    cv.put(ift.type().getName(), (String)id.getId());
-                                    ((UUIDId)bm.id.getId()).create = true;
+                                    cv.put(ift.type().getName(), (String) id.getId());
+                                    bm.id = id;
+                                    ((UUIDId) bm.id).create = true;
                                     break;
                                 default:
                                     throw new IllegalStateException("you shouldnt be here");
@@ -129,13 +138,14 @@ public abstract class GenericModel<T extends BaseModel> {
                         } else {
 
                             id = bm.id;
-                            switch (getIdType(((T)this).getClass())) {
+                            switch (getIdType(((T) this).getClass())) {
 
                                 case LONG:
-                                    cv.put(ift.type().getName(), (Long)id.getId());
+                                    cv.put(ift.type().getName(), (Long) id.getId());
                                     break;
                                 case UUID:
-                                    cv.put(ift.type().getName(), (String)id.getId());
+                                    cv.put(ift.type().getName(), (String) id.getId());
+                                    ((UUIDId) id).create = false;
                                     break;
                                 default:
                                     throw new IllegalStateException("you shouldnt be here");
@@ -148,18 +158,36 @@ public abstract class GenericModel<T extends BaseModel> {
         return cv;
     }
 
-    private static <T extends BaseModel> T getObjectFromCursor(Class<T> clazz, Cursor cursor) {
+    static private Map<Class, BaseModel> instanceCache = new HashMap<Class, BaseModel>();
+    static Date sDate = new Date();
 
-        T instance = null;
-        try {
-            instance = (T) ((Class) ((ParameterizedType) clazz.getGenericSuperclass()).getActualTypeArguments()[0]).newInstance();
+    public static <T extends BaseModel> T getObjectFromCursor(Class<T> clazz, Cursor cursor) {
 
-            for (Field field : clazz.getFields()) {
+        T instance;
 
-                int columnIndex = cursor.getColumnIndex(field.getName());
-                DataType dt = field.getAnnotation(DataType.class);
-                if (dt != null) {
+        instance = (T) instanceCache.get(clazz);
 
+        if (instance == null) {
+
+            try {
+
+                instance = (T) ((Class) ((ParameterizedType) clazz.getGenericSuperclass()).getActualTypeArguments()[0]).newInstance();
+            } catch (InstantiationException ie) {
+
+                ie.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            instanceCache.put(clazz, instance);
+        }
+
+        for (Field field : clazz.getFields()) {
+
+            int columnIndex = cursor.getColumnIndex(field.getName());
+            DataType dt = field.getAnnotation(DataType.class);
+            if (dt != null) {
+
+                try {
                     switch (dt.type()) {
 
                         case BLOB:
@@ -183,16 +211,23 @@ public abstract class GenericModel<T extends BaseModel> {
                             field.set(instance, c.getFields()[i].get(instance));
                             break;
                     }
-                }
+                } catch (IllegalAccessException e) {
 
-                InternalFieldType ift = field.getAnnotation(InternalFieldType.class);
-                if (ift != null) {
+                    e.printStackTrace();
+                }
+            }
+
+            InternalFieldType ift = field.getAnnotation(InternalFieldType.class);
+            if (ift != null) {
+
+                try {
                     switch (ift.type()) {
 
                         case CREATE:
                         case MODIFY:
-                            Date date = new Date(cursor.getLong(columnIndex));
-                            field.set(instance, date);
+
+                            sDate.setTime(cursor.getLong(columnIndex));
+                            field.set(instance, sDate);
                             break;
                         case ID:
 
@@ -210,16 +245,17 @@ public abstract class GenericModel<T extends BaseModel> {
                             }
                             break;
                     }
+                } catch (IllegalAccessException e) {
+
+                    e.printStackTrace();
                 }
             }
-
-        } catch (IllegalAccessException e) {
-
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
 
+        /*} catch (IllegalAccessException e) {
+
+            e.printStackTrace();
+        }*/
         return instance;
     }
 
@@ -307,7 +343,7 @@ public abstract class GenericModel<T extends BaseModel> {
         return value;
     }
 
-    private static <T extends BaseModel> String getCreateTableSQL(Class<T> clazz) {
+    static <T extends BaseModel> String getCreateTableSQL(Class<T> clazz) {
 
         CreateTableSqlBuilder ctsb = new CreateTableSqlBuilder(getTableName(clazz));
         for (Field field : clazz.getFields()) {
@@ -378,9 +414,9 @@ public abstract class GenericModel<T extends BaseModel> {
     /**
      * Vraci instanci objektu pro praci s DB
      */
-    protected static IDatabaseProvider<Cursor> getSQLiteDatabase() {
+    protected static SQLiteDatabase getSQLiteDatabase(Class clazz) {
 
-        return DatabaseFactory.getInstance().getDatabaseProvider();
+        return AndroidSqliteDatabaseAdapter.getInstance().getOpenedDatabase(clazz);
     }
 
     public T save() {
@@ -394,10 +430,10 @@ public abstract class GenericModel<T extends BaseModel> {
 
         try {
             // pokud nema objekt vyplnene id, pak vytvarime novy zaznam do DB
-            if ((object.id instanceof UUIDId && ((UUIDId)object.id).create) || (object.id instanceof LongId && ((LongId)object.id).getId() == 0l)) {
+            if ((object.id instanceof UUIDId && ((UUIDId) object.id).create) || (object.id instanceof LongId && ((LongId) object.id).getId() == 0l)) {
 
                 // insertujem do db
-                long id = getSQLiteDatabase().insertOrThrow(getTableName(object.getClass()), cv);
+                long id = getSQLiteDatabase(this.getClass()).insertOrThrow(getTableName(object.getClass()), null, cv);
 
                 // pokud nedoslo k chybe
                 if (id != -1) {
@@ -417,7 +453,7 @@ public abstract class GenericModel<T extends BaseModel> {
             } else {
 
                 // pokud jiz existuje id, pak provedem update
-                long updatedID = getSQLiteDatabase().update(getTableName(object.getClass()), cv, SimpleDaoSystemFieldsEnum.ID.getName() + "='" + object.getId() + "'");
+                long updatedID = getSQLiteDatabase(this.getClass()).update(getTableName(object.getClass()), cv, SimpleDaoSystemFieldsEnum.ID.getName() + "='" + object.getId().getId() + "'", null);
 
                 isUpdate = true;
 
@@ -472,14 +508,14 @@ public abstract class GenericModel<T extends BaseModel> {
         return list;
     }
 
-    public static <T extends BaseModel> void createTable(Class<T> clazz) {
+    static <T extends BaseModel> void createTable(Class<T> clazz) {
 
-        getSQLiteDatabase().execSQL(getCreateTableSQL(clazz));
+        getSQLiteDatabase(clazz).execSQL(getCreateTableSQL(clazz));
     }
 
-    public static <T extends BaseModel> void deleteTable(Class<T> clazz) {
+    static <T extends BaseModel> void dropTable(Class<T> clazz) {
 
-        getSQLiteDatabase().execSQL("drop table if exists " + getTableName(clazz));
+        getSQLiteDatabase(clazz).execSQL("drop table if exists " + getTableName(clazz));
     }
 
     public void delete() {
@@ -493,7 +529,7 @@ public abstract class GenericModel<T extends BaseModel> {
 
         BaseModel bm = (BaseModel) this;
 
-        getSQLiteDatabase().query("DELETE FROM " + tn.name() + " WHERE " + SimpleDaoSystemFieldsEnum.ID + "=?",
+        getSQLiteDatabase(this.getClass()).delete(tn.name(), SimpleDaoSystemFieldsEnum.ID + "=?",
                 new String[]{bm.getId().getId().toString()});
 
 
@@ -510,10 +546,10 @@ public abstract class GenericModel<T extends BaseModel> {
             throw new IllegalStateException("no table name annotation defined!");
         }
 
-        getSQLiteDatabase().query("DELETE FROM " + tn.name(), null);
+        getSQLiteDatabase(clazz).delete(tn.name(), null, null);
     }
 
-    private static <T extends BaseModel> String getTableName(Class<T> clazz) {
+    static <T extends BaseModel> String getTableName(Class<T> clazz) {
 
         TableName tn = clazz.getAnnotation(TableName.class);
 

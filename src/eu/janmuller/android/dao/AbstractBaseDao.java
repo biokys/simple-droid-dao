@@ -243,9 +243,9 @@ public abstract class AbstractBaseDao<T extends AbstractModel> implements IBaseD
         // namapuji objekt na db objekt
         ContentValues cv = getObject2DbMapping(object);
 
-        cv.put(KEY_ID, (String) object.getId());
+        /*cv.put(KEY_ID, (String) object.getId());
         cv.put(KEY_CREATION_DATE, ((AbstractModel)object).created.getTime());
-        cv.put(KEY_MODIFY_DATE, ((AbstractModel)object).modified.getTime());
+        cv.put(KEY_MODIFY_DATE, ((AbstractModel)object).modified.getTime());*/
         try {
             // pokud nema objekt vyplnene id, pak vytvarime novy zaznam do DB
 
