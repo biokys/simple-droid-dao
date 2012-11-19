@@ -144,6 +144,11 @@ public final class AndroidSqliteDatabaseAdapter {
         return databaseHelper.getWritableDatabase();
     }
 
+    SQLiteDatabase getOpenedDatabase() {
+
+        return databaseHelper.getWritableDatabase();
+    }
+
     public interface IUpgradeHandler {
 
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion);

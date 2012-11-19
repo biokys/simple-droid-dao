@@ -26,11 +26,33 @@ import java.util.*;
  */
 public abstract class GenericModel<T extends BaseModel> {
 
+    private static Map<Class, IdTypeEnum> sIdTypeEnumMap = new HashMap<Class, IdTypeEnum>();
+    private static Map<Class, String> sTableNameMap = new HashMap<Class, String>();
+    private static Map<String, DataTypeEnum> sDataTypeCache = new HashMap<String, DataTypeEnum>();
+    private static Map<String, SimpleDaoSystemFieldsEnum> sInternalFieldCache = new HashMap<String, SimpleDaoSystemFieldsEnum>();
+    private static Map<Class, List<Field>> sFieldsCache = new HashMap<Class, List<Field>>();
+    static Date sDate = new Date();
+
+    public static void beginTx() {
+
+        getSQLiteDatabase().beginTransaction();
+    }
+
+    public static void endTx() {
+
+        getSQLiteDatabase().endTransaction();
+    }
+
+    public static void setTxSuccesfull() {
+
+        getSQLiteDatabase().setTransactionSuccessful();
+    }
+
     public static <T extends BaseModel> T findObjectById(Class<T> clazz, Id id) {
 
         T object = null;
         Cursor cursor = getSQLiteDatabase(clazz).rawQuery("SELECT * FROM " + getTableName(clazz)
-                + " WHERE " + SimpleDaoSystemFieldsEnum.ID + "=?", new String[]{id.getId().toString()});
+                + " WHERE " + SimpleDaoSystemFieldsEnum.ID + "=? LIMIT 1", new String[]{id.getId().toString()});
 
         if (cursor != null && cursor.moveToFirst()) {
 
@@ -53,18 +75,46 @@ public abstract class GenericModel<T extends BaseModel> {
         return getSQLiteDatabase(clazz).rawQuery("SELECT *, rowid _id FROM " + getTableName(clazz), null);
     }
 
-    private ContentValues getContentValuesFromObject() {
+    public static <T extends BaseModel> List<T> getByQuery(Class<T> clazz, String whereClause) {
+
+        Cursor cursor = getByQueryInCursor(clazz, whereClause);
+
+        return getListFromCursor(clazz, cursor);
+    }
+
+    public static <T extends BaseModel> Cursor getByQueryInCursor(Class<T> clazz, String whereClause) {
+
+        String selectQuery = "SELECT *, rowid _id FROM " + getTableName(clazz) + " WHERE " + whereClause;
+
+        return getSQLiteDatabase(clazz).rawQuery(selectQuery, null);
+    }
+
+    public static <T extends BaseModel> int getCountByQuery(Class<T> clazz, String whereClause) {
+
+        String selectQuery = "SELECT COUNT(1) FROM " + getTableName(clazz) + " WHERE " + whereClause;
+
+        Cursor c = getSQLiteDatabase(clazz).rawQuery(selectQuery, null);
+
+        if (c == null) {
+
+            return 0;
+        }
+
+        return c.moveToFirst() ? c.getInt(0) : 0;
+    }
+
+    protected ContentValues getContentValuesFromObject() {
 
         ContentValues cv = new ContentValues();
 
         Date now = new Date();
 
-        for (Field field : getClass().getFields()) {
+        for (Field field : getCachedFields(getClass())) {
 
-            DataType dt = field.getAnnotation(DataType.class);
+            DataTypeEnum dt = getCachedDataType(this.getClass(), field);
             if (dt != null) {
 
-                switch (dt.type()) {
+                switch (dt) {
 
                     case BLOB:
                         cv.put(field.getName(), (byte[]) getValueFromField(field));
@@ -78,6 +128,12 @@ public abstract class GenericModel<T extends BaseModel> {
                     case DOUBLE:
                         cv.put(field.getName(), (Double) getValueFromField(field));
                         break;
+                    case FLOAT:
+                        cv.put(field.getName(), (Float) getValueFromField(field));
+                        break;
+                    case BOOLEAN:
+                        cv.put(field.getName(), (Boolean) getValueFromField(field));
+                        break;
                     case DATE:
                         cv.put(field.getName(), ((Date) getValueFromField(field)).getTime());
                         break;
@@ -87,26 +143,26 @@ public abstract class GenericModel<T extends BaseModel> {
                 }
             }
 
-            InternalFieldType ift = field.getAnnotation(InternalFieldType.class);
-            if (ift != null) {
+            SimpleDaoSystemFieldsEnum sdsfe = getCachedInternalField(this.getClass(), field);
+            if (sdsfe != null) {
 
                 BaseDateModel bdm;
 
-                switch (ift.type()) {
+                switch (sdsfe) {
 
                     case CREATE:
 
                         bdm = (BaseDateModel) this;
                         if (bdm.creationDate == null) {
 
-                            cv.put(ift.type().getName(), now.getTime());
+                            cv.put(sdsfe.getName(), now.getTime());
                             bdm.creationDate = now;
                         }
                         break;
                     case MODIFY:
 
                         bdm = (BaseDateModel) this;
-                        cv.put(ift.type().getName(), now.getTime());
+                        cv.put(sdsfe.getName(), now.getTime());
                         bdm.modifiedDate = now;
                         break;
                     case ID:
@@ -128,7 +184,7 @@ public abstract class GenericModel<T extends BaseModel> {
                                     break;
                                 case UUID:
                                     id = new UUIDId();
-                                    cv.put(ift.type().getName(), (String) id.getId());
+                                    cv.put(sdsfe.getName(), (String) id.getId());
                                     bm.id = id;
                                     ((UUIDId) bm.id).create = true;
                                     break;
@@ -141,10 +197,10 @@ public abstract class GenericModel<T extends BaseModel> {
                             switch (getIdType(((T) this).getClass())) {
 
                                 case LONG:
-                                    cv.put(ift.type().getName(), (Long) id.getId());
+                                    cv.put(sdsfe.getName(), (Long) id.getId());
                                     break;
                                 case UUID:
-                                    cv.put(ift.type().getName(), (String) id.getId());
+                                    cv.put(sdsfe.getName(), (String) id.getId());
                                     ((UUIDId) id).create = false;
                                     break;
                                 default:
@@ -158,37 +214,44 @@ public abstract class GenericModel<T extends BaseModel> {
         return cv;
     }
 
-    static private Map<Class, BaseModel> instanceCache = new HashMap<Class, BaseModel>();
-    static Date sDate = new Date();
+    private static List<Field> getCachedFields(Class clazz) {
+
+        List<Field> list = sFieldsCache.get(clazz);
+
+        if (list == null) {
+
+            list = new ArrayList<Field>();
+
+            list.addAll(Arrays.asList(clazz.getFields()));
+            sFieldsCache.put(clazz, list);
+        }
+
+        return list;
+    }
 
     public static <T extends BaseModel> T getObjectFromCursor(Class<T> clazz, Cursor cursor) {
 
-        T instance;
+        T instance = null;
 
-        instance = (T) instanceCache.get(clazz);
+        try {
 
-        if (instance == null) {
+            instance = clazz.newInstance();
+        } catch (InstantiationException ie) {
 
-            try {
+            ie.printStackTrace();
+        } catch (IllegalAccessException e) {
 
-                instance = (T) ((Class) ((ParameterizedType) clazz.getGenericSuperclass()).getActualTypeArguments()[0]).newInstance();
-            } catch (InstantiationException ie) {
-
-                ie.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            }
-            instanceCache.put(clazz, instance);
+            e.printStackTrace();
         }
 
-        for (Field field : clazz.getFields()) {
+        for (Field field : getCachedFields(clazz)) {
 
             int columnIndex = cursor.getColumnIndex(field.getName());
-            DataType dt = field.getAnnotation(DataType.class);
+            DataTypeEnum dt = getCachedDataType(clazz, field);
             if (dt != null) {
 
                 try {
-                    switch (dt.type()) {
+                    switch (dt) {
 
                         case BLOB:
                             field.set(instance, cursor.getBlob(columnIndex));
@@ -196,8 +259,14 @@ public abstract class GenericModel<T extends BaseModel> {
                         case DOUBLE:
                             field.set(instance, cursor.getDouble(columnIndex));
                             break;
+                        case FLOAT:
+                            field.set(instance, cursor.getFloat(columnIndex));
+                            break;
                         case INTEGER:
                             field.set(instance, cursor.getInt(columnIndex));
+                            break;
+                        case BOOLEAN:
+                            field.set(instance, convertToBoolean(cursor.getInt(columnIndex)));
                             break;
                         case TEXT:
                             field.set(instance, cursor.getString(columnIndex));
@@ -208,7 +277,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         case ENUM:
                             int i = cursor.getInt(columnIndex);
                             Class c = field.getType();
-                            field.set(instance, c.getFields()[i].get(instance));
+                            field.set(instance, getCachedFields(c).get(i).get(instance));
                             break;
                     }
                 } catch (IllegalAccessException e) {
@@ -217,11 +286,11 @@ public abstract class GenericModel<T extends BaseModel> {
                 }
             }
 
-            InternalFieldType ift = field.getAnnotation(InternalFieldType.class);
-            if (ift != null) {
+            SimpleDaoSystemFieldsEnum sdsfe = getCachedInternalField(clazz, field);
+            if (sdsfe != null) {
 
                 try {
-                    switch (ift.type()) {
+                    switch (sdsfe) {
 
                         case CREATE:
                         case MODIFY:
@@ -252,10 +321,6 @@ public abstract class GenericModel<T extends BaseModel> {
             }
         }
 
-        /*} catch (IllegalAccessException e) {
-
-            e.printStackTrace();
-        }*/
         return instance;
     }
 
@@ -335,37 +400,82 @@ public abstract class GenericModel<T extends BaseModel> {
             throw new IllegalStateException("field is not accessible");
         }
 
-        if (value == null) {
+        /*if (value == null) {
 
             throw new IllegalStateException("value is null!");
-        }
+        }*/
 
         return value;
     }
 
+    private static DataTypeEnum getCachedDataType(Class clazz, Field field) {
+
+        String name = clazz.getName().concat(field.getName());
+        DataTypeEnum dte = sDataTypeCache.get(name);
+        if (dte == null) {
+
+            DataType dt = field.getAnnotation(DataType.class);
+
+            if (dt != null) {
+
+                dte = dt.type();
+                sDataTypeCache.put(name, dte);
+            } else {
+
+                sDataTypeCache.put(name, null);
+            }
+        }
+        return dte;
+    }
+
+    private static SimpleDaoSystemFieldsEnum getCachedInternalField(Class clazz, Field field) {
+
+        String name = clazz.getName().concat(field.getName());
+        SimpleDaoSystemFieldsEnum sdsfe = sInternalFieldCache.get(name);
+        if (sdsfe == null) {
+
+            InternalFieldType ift = field.getAnnotation(InternalFieldType.class);
+
+            if (ift != null) {
+
+                sdsfe = ift.type();
+                sInternalFieldCache.put(name, sdsfe);
+            } else {
+
+                sInternalFieldCache.put(name, null);
+            }
+        }
+        return sdsfe;
+    }
+
+
+
     static <T extends BaseModel> String getCreateTableSQL(Class<T> clazz) {
 
         CreateTableSqlBuilder ctsb = new CreateTableSqlBuilder(getTableName(clazz));
-        for (Field field : clazz.getFields()) {
+        for (Field field : getCachedFields(clazz)) {
 
-            DataType dt = field.getAnnotation(DataType.class);
+            DataTypeEnum dt = getCachedDataType(clazz, field);
+
             if (dt != null) {
 
                 NotNull notNull = field.getAnnotation(NotNull.class);
                 Unique unique = field.getAnnotation(Unique.class);
                 Index index = field.getAnnotation(Index.class);
 
-                switch (dt.type()) {
+                switch (dt) {
 
                     case BLOB:
                         ctsb.addBlobColumn(field.getName(), notNull != null);
                         break;
                     case DATE:
                     case INTEGER:
+                    case BOOLEAN:
                     case ENUM:
                         ctsb.addIntegerColumn(field.getName(), notNull != null);
                         break;
                     case DOUBLE:
+                    case FLOAT:
                         ctsb.addRealColumn(field.getName(), notNull != null);
                         break;
                     case TEXT:
@@ -385,9 +495,9 @@ public abstract class GenericModel<T extends BaseModel> {
                 }
             }
 
-            InternalFieldType ift = field.getAnnotation(InternalFieldType.class);
-            if (ift != null) {
-                switch (ift.type()) {
+            SimpleDaoSystemFieldsEnum sdsfe = getCachedInternalField(clazz, field);
+            if (sdsfe != null) {
+                switch (sdsfe) {
 
                     case CREATE:
                     case MODIFY:
@@ -417,6 +527,23 @@ public abstract class GenericModel<T extends BaseModel> {
     protected static SQLiteDatabase getSQLiteDatabase(Class clazz) {
 
         return AndroidSqliteDatabaseAdapter.getInstance().getOpenedDatabase(clazz);
+    }
+
+    private static SQLiteDatabase getSQLiteDatabase() {
+
+        return AndroidSqliteDatabaseAdapter.getInstance().getOpenedDatabase();
+    }
+
+    public static <T extends BaseModel> Map<Id, T> getAllObjectsAsMap(Class<T> clazz) {
+
+        Map<Id, T> map = new HashMap<Id, T>();
+        List<T> objects = getAllObjects(clazz);
+        for (T t : objects) {
+
+            map.put(t.id, t);
+        }
+
+        return map;
     }
 
     public T save() {
@@ -453,7 +580,7 @@ public abstract class GenericModel<T extends BaseModel> {
             } else {
 
                 // pokud jiz existuje id, pak provedem update
-                long updatedID = getSQLiteDatabase(this.getClass()).update(getTableName(object.getClass()), cv, SimpleDaoSystemFieldsEnum.ID.getName() + "='" + object.getId().getId() + "'", null);
+                long updatedID = getSQLiteDatabase(this.getClass()).update(getTableName(object.getClass()), cv, SimpleDaoSystemFieldsEnum.ID.getName() + "='" + object.id + "'", null);
 
                 isUpdate = true;
 
@@ -465,7 +592,7 @@ public abstract class GenericModel<T extends BaseModel> {
                 } else {
 
                     // jinak vyhodime runtime exception
-                    throw new RuntimeException("update failed for object id " + object.getId());
+                    throw new RuntimeException("update failed for object id " + object.id);
                 }
             }
         } catch (SQLiteConstraintException sce) {
@@ -530,10 +657,19 @@ public abstract class GenericModel<T extends BaseModel> {
         BaseModel bm = (BaseModel) this;
 
         getSQLiteDatabase(this.getClass()).delete(tn.name(), SimpleDaoSystemFieldsEnum.ID + "=?",
-                new String[]{bm.getId().getId().toString()});
+                new String[]{bm.id.toString()});
 
 
         bm.id = null;
+
+    }
+
+    /**
+     * Pomocna metoda pro konverzi z intu do booleanu
+     */
+    private static boolean convertToBoolean(int i) {
+
+        return i != 0;
 
     }
 
@@ -549,25 +685,43 @@ public abstract class GenericModel<T extends BaseModel> {
         getSQLiteDatabase(clazz).delete(tn.name(), null, null);
     }
 
-    static <T extends BaseModel> String getTableName(Class<T> clazz) {
+    protected static <T extends BaseModel> String getTableName(Class<T> clazz) {
 
-        TableName tn = clazz.getAnnotation(TableName.class);
+        String tableName = sTableNameMap.get(clazz);
 
-        if (tn == null) {
+        if (tableName == null) {
 
-            throw new IllegalStateException("no table name annotation defined!");
+            TableName tn = clazz.getAnnotation(TableName.class);
+
+            if (tn == null) {
+
+                throw new IllegalStateException("no table name annotation defined!");
+            }
+
+            tableName = tn.name();
+            sTableNameMap.put(clazz, tableName);
         }
-        return tn.name();
+        return tableName;
     }
+
+
 
     private static <T extends BaseModel> IdTypeEnum getIdType(Class<T> clazz) {
 
-        IdType idType = clazz.getAnnotation(IdType.class);
-        if (idType == null) {
+        IdTypeEnum typeEnum = sIdTypeEnumMap.get(clazz);
 
-            throw new IllegalStateException("no id type annotation defined");
+        if (typeEnum == null) {
+
+            IdType idType = clazz.getAnnotation(IdType.class);
+            if (idType == null) {
+
+                throw new IllegalStateException("no id type annotation defined");
+            }
+
+            typeEnum = idType.type();
+            sIdTypeEnumMap.put(clazz, typeEnum);
         }
-        return idType.type();
+        return typeEnum;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -593,9 +747,11 @@ public abstract class GenericModel<T extends BaseModel> {
 
         INTEGER,
         DOUBLE,
+        FLOAT,
         TEXT,
         BLOB,
         DATE,
+        BOOLEAN,
         ENUM
     }
 
