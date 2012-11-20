@@ -31,7 +31,7 @@ public abstract class GenericModel<T extends BaseModel> {
     private static Map<String, DataTypeEnum> sDataTypeCache = new HashMap<String, DataTypeEnum>();
     private static Map<String, SimpleDaoSystemFieldsEnum> sInternalFieldCache = new HashMap<String, SimpleDaoSystemFieldsEnum>();
     private static Map<Class, List<Field>> sFieldsCache = new HashMap<Class, List<Field>>();
-    static Date sDate = new Date();
+    private static Date sDate = new Date();
 
     public static void beginTx() {
 
@@ -324,71 +324,6 @@ public abstract class GenericModel<T extends BaseModel> {
         return instance;
     }
 
-
-    /*private void getObjectFromContentValues(Map<String, Object> cv) {
-
-        //T instance = null;
-        try {
-            //instance = (T) ((Class) ((ParameterizedType) this.getClass().getGenericSuperclass()).getActualTypeArguments()[0]).newInstance();
-
-            for (Field field : this.getClass().getFields()) {
-
-                DataType dt = field.getAnnotation(DataType.class);
-                if (dt != null) {
-
-                    switch (dt.type()) {
-
-                        case BLOB:
-                        case DOUBLE:
-                        case INTEGER:
-                        case TEXT:
-                            field.set(this, cv.get(field.getName()));
-                            break;
-                        case DATE:
-                            field.set(this, new Date((Long) cv.get(field.getName())));
-                            break;
-                        case ENUM:
-                            int i = (Integer) cv.get(field.getName());
-                            Class c = field.getType();
-                            field.set(this, c.getFields()[i].get(this));
-                            break;
-                    }
-                }
-
-                InternalFieldType ift = field.getAnnotation(InternalFieldType.class);
-                if (ift != null) {
-                    switch (ift.type()) {
-
-                        case CREATE:
-                        case MODIFY:
-                            Date date = new Date((Long)cv.get(field.getName()));
-                            field.set(this, date);
-                            break;
-                        case ID:
-
-                            // pokud jeste neni idcko, pak se jedna o novy objekt
-                            switch (getIdType(((T)this).getClass())) {
-
-                                case LONG:
-                                    field.set(this, new LongId((Long) cv.get(field.getName())));
-                                    break;
-                                case UUID:
-                                    field.set(this, new UUIDId((String) cv.get(field.getName())));
-                                    break;
-                                default:
-                                    throw new IllegalStateException("you shouldnt be here");
-                            }
-                            break;
-                    }
-                }
-            }
-
-        } catch (IllegalAccessException e) {
-
-            e.printStackTrace();
-        }
-    }*/
-
     private Object getValueFromField(Field f) {
 
         Object value;
@@ -399,11 +334,6 @@ public abstract class GenericModel<T extends BaseModel> {
 
             throw new IllegalStateException("field is not accessible");
         }
-
-        /*if (value == null) {
-
-            throw new IllegalStateException("value is null!");
-        }*/
 
         return value;
     }
@@ -800,6 +730,16 @@ public abstract class GenericModel<T extends BaseModel> {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
     public @interface NotNull {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.FIELD})
+    public @interface ForeignKey {
+
+        boolean deleteOnCascade() default false;
+        boolean updateOnCascade() default false;
+        String attributeName();
+        Class attributeClass();
     }
 
 
