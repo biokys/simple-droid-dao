@@ -15,7 +15,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 /**
@@ -171,7 +170,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         Id id;
                         // pokud jeste neni idcko, pak se jedna o novy objekt
                         if (bm.id == null) {
-                            switch (getIdType(((T) this).getClass())) {
+                            switch (getIdType((this).getClass())) {
 
                                 case LONG:
                                     id = new LongId(0l);
@@ -194,7 +193,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         } else {
 
                             id = bm.id;
-                            switch (getIdType(((T) this).getClass())) {
+                            switch (getIdType((this).getClass())) {
 
                                 case LONG:
                                     cv.put(sdsfe.getName(), (Long) id.getId());
@@ -212,21 +211,6 @@ public abstract class GenericModel<T extends BaseModel> {
             }
         }
         return cv;
-    }
-
-    private static List<Field> getCachedFields(Class clazz) {
-
-        List<Field> list = sFieldsCache.get(clazz);
-
-        if (list == null) {
-
-            list = new ArrayList<Field>();
-
-            list.addAll(Arrays.asList(clazz.getFields()));
-            sFieldsCache.put(clazz, list);
-        }
-
-        return list;
     }
 
     public static <T extends BaseModel> T getObjectFromCursor(Class<T> clazz, Cursor cursor) {
@@ -338,6 +322,21 @@ public abstract class GenericModel<T extends BaseModel> {
         return value;
     }
 
+    private static List<Field> getCachedFields(Class clazz) {
+
+        List<Field> list = sFieldsCache.get(clazz);
+
+        if (list == null) {
+
+            list = new ArrayList<Field>();
+
+            list.addAll(Arrays.asList(clazz.getFields()));
+            sFieldsCache.put(clazz, list);
+        }
+
+        return list;
+    }
+
     private static DataTypeEnum getCachedDataType(Class clazz, Field field) {
 
         String name = clazz.getName().concat(field.getName());
@@ -377,8 +376,6 @@ public abstract class GenericModel<T extends BaseModel> {
         }
         return sdsfe;
     }
-
-
 
     static <T extends BaseModel> String getCreateTableSQL(Class<T> clazz) {
 
@@ -481,7 +478,7 @@ public abstract class GenericModel<T extends BaseModel> {
         // namapuji objekt na db objekt
         ContentValues cv = getContentValuesFromObject();
 
-        T object = (T) this;
+        T object = (T)this;
 
         boolean isUpdate = false;
 
@@ -577,21 +574,12 @@ public abstract class GenericModel<T extends BaseModel> {
 
     public void delete() {
 
-        TableName tn = getClass().getAnnotation(TableName.class);
-
-        if (tn == null) {
-
-            throw new IllegalStateException("no table name annotation defined!");
-        }
-
         BaseModel bm = (BaseModel) this;
 
-        getSQLiteDatabase(this.getClass()).delete(tn.name(), SimpleDaoSystemFieldsEnum.ID + "=?",
+        getSQLiteDatabase(this.getClass()).delete(getTableName(getClass()), SimpleDaoSystemFieldsEnum.ID + "=?",
                 new String[]{bm.id.toString()});
 
-
         bm.id = null;
-
     }
 
     /**
@@ -605,17 +593,10 @@ public abstract class GenericModel<T extends BaseModel> {
 
     public static <T extends BaseModel> void deleteAll(Class<T> clazz) {
 
-        TableName tn = clazz.getAnnotation(TableName.class);
-
-        if (tn == null) {
-
-            throw new IllegalStateException("no table name annotation defined!");
-        }
-
-        getSQLiteDatabase(clazz).delete(tn.name(), null, null);
+        getSQLiteDatabase(clazz).delete(getTableName(clazz), null, null);
     }
 
-    protected static <T extends BaseModel> String getTableName(Class<T> clazz) {
+    protected static <T extends BaseModel> String getTableName(Class<?> clazz) {
 
         String tableName = sTableNameMap.get(clazz);
 
@@ -636,7 +617,7 @@ public abstract class GenericModel<T extends BaseModel> {
 
 
 
-    private static <T extends BaseModel> IdTypeEnum getIdType(Class<T> clazz) {
+    private static <T extends BaseModel> IdTypeEnum getIdType(Class<?> clazz) {
 
         IdTypeEnum typeEnum = sIdTypeEnumMap.get(clazz);
 
