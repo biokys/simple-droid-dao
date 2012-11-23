@@ -9,6 +9,7 @@ import eu.janmuller.android.dao.api.id.Id;
 import eu.janmuller.android.dao.api.id.LongId;
 import eu.janmuller.android.dao.api.id.UUIDId;
 import eu.janmuller.android.dao.exceptions.DaoConstraintException;
+import eu.janmuller.android.dao.exceptions.SimpleDroidDaoException;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -178,7 +179,7 @@ public abstract class GenericModel<T extends BaseModel> {
                                         field.set(this, new LongId((Long) id.getId()));
                                     } catch (IllegalAccessException e) {
 
-                                        throw new RuntimeException("cannot set field id");
+                                        throw new SimpleDroidDaoException("cannot set field id");
                                     }
                                     break;
                                 case UUID:
@@ -188,7 +189,7 @@ public abstract class GenericModel<T extends BaseModel> {
                                     ((UUIDId) bm.id).create = true;
                                     break;
                                 default:
-                                    throw new IllegalStateException("you shouldnt be here");
+                                    throw new SimpleDroidDaoException("you shouldnt be here");
                             }
                         } else {
 
@@ -203,7 +204,7 @@ public abstract class GenericModel<T extends BaseModel> {
                                     ((UUIDId) id).create = false;
                                     break;
                                 default:
-                                    throw new IllegalStateException("you shouldnt be here");
+                                    throw new SimpleDroidDaoException("you shouldnt be here");
                             }
                         }
 
@@ -222,10 +223,11 @@ public abstract class GenericModel<T extends BaseModel> {
             instance = clazz.newInstance();
         } catch (InstantiationException ie) {
 
-            ie.printStackTrace();
+            throw new SimpleDroidDaoException(ie);
+
         } catch (IllegalAccessException e) {
 
-            e.printStackTrace();
+            throw new SimpleDroidDaoException(e);
         }
 
         for (Field field : getCachedFields(clazz)) {
@@ -266,7 +268,7 @@ public abstract class GenericModel<T extends BaseModel> {
                     }
                 } catch (IllegalAccessException e) {
 
-                    e.printStackTrace();
+                    throw new SimpleDroidDaoException(e);
                 }
             }
 
@@ -300,7 +302,7 @@ public abstract class GenericModel<T extends BaseModel> {
                     }
                 } catch (IllegalAccessException e) {
 
-                    e.printStackTrace();
+                    throw new SimpleDroidDaoException(e);
                 }
             }
         }
@@ -316,7 +318,7 @@ public abstract class GenericModel<T extends BaseModel> {
             value = f.get(this);
         } catch (IllegalAccessException e) {
 
-            throw new IllegalStateException("field is not accessible");
+            throw new SimpleDroidDaoException("field is not accessible");
         }
 
         return value;
@@ -501,7 +503,7 @@ public abstract class GenericModel<T extends BaseModel> {
                 } else {
 
                     // jinak vyhodime runtime exception
-                    throw new RuntimeException("insert failed");
+                    throw new SimpleDroidDaoException("insert failed");
                 }
 
             } else {
@@ -519,12 +521,13 @@ public abstract class GenericModel<T extends BaseModel> {
                 } else {
 
                     // jinak vyhodime runtime exception
-                    throw new RuntimeException("update failed for object id " + object.id);
+                    throw new SimpleDroidDaoException("update failed for object id " + object.id);
                 }
             }
         } catch (SQLiteConstraintException sce) {
 
 
+            //TODO
             throw new DaoConstraintException(isUpdate ? DaoConstraintException.ConstraintsExceptionType.UPDATE :
                     DaoConstraintException.ConstraintsExceptionType.INSERT, sce);
         }
