@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
+import eu.janmuller.android.dao.api.id.AbstractId;
 import eu.janmuller.android.dao.api.id.Id;
 import eu.janmuller.android.dao.api.id.LongId;
 import eu.janmuller.android.dao.api.id.UUIDId;
@@ -157,6 +158,9 @@ public abstract class GenericModel<T extends BaseModel> {
 
                             cv.put(sdsfe.getName(), now.getTime());
                             bdm.creationDate = now;
+                        } else {
+
+                            cv.put(sdsfe.getName(), bdm.creationDate.getTime());
                         }
                         break;
                     case MODIFY:
@@ -282,7 +286,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         case MODIFY:
 
                             sDate.setTime(cursor.getLong(columnIndex));
-                            field.set(instance, sDate);
+                            field.set(instance, sDate.clone());
                             break;
                         case ID:
 
@@ -455,12 +459,12 @@ public abstract class GenericModel<T extends BaseModel> {
      */
     protected static SQLiteDatabase getSQLiteDatabase(Class clazz) {
 
-        return AndroidSqliteDatabaseAdapter.getInstance().getOpenedDatabase(clazz);
+        return SimpleDroidDao.getOpenedDatabase(clazz);
     }
 
     private static SQLiteDatabase getSQLiteDatabase() {
 
-        return AndroidSqliteDatabaseAdapter.getInstance().getOpenedDatabase();
+        return SimpleDroidDao.getOpenedDatabase();
     }
 
     public static <T extends BaseModel> Map<Id, T> getAllObjectsAsMap(Class<T> clazz) {
@@ -486,7 +490,7 @@ public abstract class GenericModel<T extends BaseModel> {
 
         try {
             // pokud nema objekt vyplnene id, pak vytvarime novy zaznam do DB
-            if ((object.id instanceof UUIDId && ((UUIDId) object.id).create) || (object.id instanceof LongId && ((LongId) object.id).getId() == 0l)) {
+            if (((AbstractId)object.id).operationType() == AbstractId.OperationType.CREATE) {
 
                 // insertujem do db
                 long id = getSQLiteDatabase(this.getClass()).insertOrThrow(getTableName(object.getClass()), null, cv);

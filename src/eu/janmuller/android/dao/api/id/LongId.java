@@ -12,4 +12,16 @@ final public class LongId extends AbstractId<Long> {
 
         super(id);
     }
+
+    @Override
+    public String toString() {
+
+        return getId().toString();
+    }
+
+    @Override
+    public OperationType operationType() {
+
+        return getId() == 0l ? OperationType.CREATE : OperationType.UPDATE;
+    }
 }

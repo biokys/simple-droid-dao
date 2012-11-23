@@ -14,67 +14,39 @@ import java.util.List;
  * Database helper class used to manage the creation and upgrading of your database. This class also usually provides
  * the DAOs used by the other classes.
  */
-public final class AndroidSqliteDatabaseAdapter {
+public final class SimpleDroidDao {
 
-    private String mDatabaseName;
+    private static String mDatabaseName;
 
-    private int mDatabaseVersion;
+    private static int mDatabaseVersion;
 
-    private DatabaseHelper databaseHelper;
+    private static DatabaseHelper databaseHelper;
 
-    private Context mContext;
+    private static IUpgradeHandler mUpgradeHandler;
 
-    private IUpgradeHandler mUpgradeHandler;
-
-    private static AndroidSqliteDatabaseAdapter INSTANCE;
-
-    private List<Class<? extends BaseModel>> mModelClasses = new ArrayList<Class<? extends BaseModel>>();
+    private static List<Class<? extends BaseModel>> sModelClasses = new ArrayList<Class<? extends BaseModel>>();
 
 
-    private AndroidSqliteDatabaseAdapter(Context context, String databaseName, int version, IUpgradeHandler upgradeHandler) {
+    private SimpleDroidDao() {}
+
+    public static void initialize(Context context, String databaseName, int version, IUpgradeHandler upgradeHandler) {
 
         mDatabaseName = databaseName;
         mDatabaseVersion = version;
-        mContext = context;
         mUpgradeHandler = upgradeHandler;
-
+        databaseHelper = new DatabaseHelper(context);
     }
 
-    public static synchronized void initialize(Context context, String databaseName, int version, IUpgradeHandler upgradeHandler) {
+    public static void registerModelClass(Class<? extends BaseModel> clazz) {
 
-        if (INSTANCE == null) {
-
-            INSTANCE = new AndroidSqliteDatabaseAdapter(context, databaseName, version, upgradeHandler);
-        }
+        sModelClasses.add(clazz);
     }
 
-    public void registerClass(Class<? extends BaseModel> clazz) {
+    static class DatabaseHelper extends SQLiteOpenHelper {
 
-        mModelClasses.add(clazz);
-    }
+        DatabaseHelper(Context context) {
 
-    public void start() {
-
-        databaseHelper = new DatabaseHelper(this);
-    }
-
-    public static AndroidSqliteDatabaseAdapter getInstance() {
-
-        if (INSTANCE == null) {
-
-            throw new IllegalStateException("you have to call initialize method before");
-        }
-        return INSTANCE;
-    }
-
-    class DatabaseHelper extends SQLiteOpenHelper {
-
-        AndroidSqliteDatabaseAdapter mDatabaseAdapter;
-
-        DatabaseHelper(AndroidSqliteDatabaseAdapter databaseAdapter) {
-
-            super(databaseAdapter.mContext, mDatabaseName, null, mDatabaseVersion);
-            mDatabaseAdapter = databaseAdapter;
+            super(context, mDatabaseName, null, mDatabaseVersion);
         }
 
         @Override
@@ -83,7 +55,7 @@ public final class AndroidSqliteDatabaseAdapter {
             Log.i(DaoConstants.LOG_TAG, "Creating tables...");
 
 
-            for (Class<? extends BaseModel> model : mModelClasses) {
+            for (Class<? extends BaseModel> model : sModelClasses) {
 
                 createTable(db, model);
             }
@@ -99,7 +71,7 @@ public final class AndroidSqliteDatabaseAdapter {
             Log.i(DaoConstants.LOG_TAG, "Upgrading database from version " + oldVersion + " to " + newVersion + ")");
 
             if (mUpgradeHandler == null) {
-                for (Class<? extends BaseModel> model : mModelClasses) {
+                for (Class<? extends BaseModel> model : sModelClasses) {
 
                     dropTable(db, model);
                     createTable(db, model);
@@ -134,9 +106,9 @@ public final class AndroidSqliteDatabaseAdapter {
         db.execSQL("drop table if exists " + GenericModel.getTableName(clazz));
     }
 
-    public SQLiteDatabase getOpenedDatabase(Class clazz) {
+    public static SQLiteDatabase getOpenedDatabase(Class clazz) {
 
-        /*if (!mModelClasses.contains(clazz)) {
+        /*if (!sModelClasses.contains(clazz)) {
 
             throw new IllegalStateException("You have to call register method before for class " + clazz);
         }*/
@@ -144,7 +116,7 @@ public final class AndroidSqliteDatabaseAdapter {
         return databaseHelper.getWritableDatabase();
     }
 
-    SQLiteDatabase getOpenedDatabase() {
+    static SQLiteDatabase getOpenedDatabase() {
 
         return databaseHelper.getWritableDatabase();
     }

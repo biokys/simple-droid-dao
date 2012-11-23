@@ -35,6 +35,12 @@ public class UUIDId extends AbstractId<String> {
     }
 
     @Override
+    public OperationType operationType() {
+
+        return create ? OperationType.CREATE : OperationType.UPDATE;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
