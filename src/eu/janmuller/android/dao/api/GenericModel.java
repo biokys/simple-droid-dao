@@ -603,6 +603,11 @@ public abstract class GenericModel<T extends BaseModel> {
         getSQLiteDatabase(clazz).delete(getTableName(clazz), null, null);
     }
 
+    public static <T extends BaseModel> void deleteByQuery(Class<T> clazz, String whereClause) {
+
+        getSQLiteDatabase(clazz).delete(getTableName(clazz), whereClause, null);
+    }
+
     protected static <T extends BaseModel> String getTableName(Class<?> clazz) {
 
         String tableName = sTableNameMap.get(clazz);
@@ -648,6 +653,10 @@ public abstract class GenericModel<T extends BaseModel> {
 
         String name();
     }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE})
+    public @interface Entity {}
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
@@ -729,6 +738,8 @@ public abstract class GenericModel<T extends BaseModel> {
         String attributeName();
         Class attributeClass();
     }
+
+
 
 
 }

@@ -6,7 +6,10 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 import eu.janmuller.android.dao.DaoConstants;
+import eu.janmuller.android.dao.exceptions.SimpleDroidDaoException;
 
+import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +37,8 @@ public final class SimpleDroidDao {
         mDatabaseName = databaseName;
         mDatabaseVersion = version;
         mUpgradeHandler = upgradeHandler;
+
+        //scanForModels(new String[] {"eu.janmuller.android.test.dao"});
         databaseHelper = new DatabaseHelper(context);
     }
 
@@ -41,6 +46,42 @@ public final class SimpleDroidDao {
 
         sModelClasses.add(clazz);
     }
+
+    /*private static void scanForModels(String[] packages) {
+
+        final List<Class> classes = new ArrayList<Class>();
+
+        AnnotationDetector annotationDetector = new AnnotationDetector(new AnnotationDetector.MethodReporter() {
+            @Override
+            public void reportMethodAnnotation(Class<? extends Annotation> annotation, String className, String methodName) {
+
+                try {
+
+                    Class<? extends BaseModel> clazz = (Class<? extends BaseModel>)Class.forName(className);
+                    sModelClasses.add(clazz);
+                } catch (ClassNotFoundException e) {
+
+                    throw new SimpleDroidDaoException(e);
+                }
+
+            }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public Class<? extends Annotation>[] annotations() {
+                return new Class[] {GenericModel.Entity.class};
+            }
+        });
+
+
+        try {
+
+            annotationDetector.detect(packages);
+        } catch (IOException e) {
+
+            throw new SimpleDroidDaoException(e);
+        }
+    }*/
 
     static class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -71,6 +112,7 @@ public final class SimpleDroidDao {
             Log.i(DaoConstants.LOG_TAG, "Upgrading database from version " + oldVersion + " to " + newVersion + ")");
 
             if (mUpgradeHandler == null) {
+
                 for (Class<? extends BaseModel> model : sModelClasses) {
 
                     dropTable(db, model);
