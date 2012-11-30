@@ -9,7 +9,6 @@ import eu.janmuller.android.dao.api.id.AbstractId;
 import eu.janmuller.android.dao.api.id.Id;
 import eu.janmuller.android.dao.api.id.LongId;
 import eu.janmuller.android.dao.api.id.UUIDId;
-import eu.janmuller.android.dao.exceptions.DaoConstraintException;
 import eu.janmuller.android.dao.exceptions.SimpleDroidDaoException;
 
 import java.lang.annotation.ElementType;
@@ -123,8 +122,8 @@ public abstract class GenericModel<T extends BaseModel> {
                     case INTEGER:
                         cv.put(field.getName(), (Integer) getValueFromField(field));
                         break;
-                    case ID_INTEGER:
-                        cv.put(field.getName(), Integer.valueOf(((UUIDId) getValueFromField(field)).getId()));
+                    case ID_LONG:
+                        cv.put(field.getName(), Long.valueOf(((UUIDId) getValueFromField(field)).getId()));
                         break;
                     case TEXT:
                         cv.put(field.getName(), (String) getValueFromField(field));
@@ -270,6 +269,12 @@ public abstract class GenericModel<T extends BaseModel> {
                         case DATE:
                             field.set(instance, new Date(cursor.getLong(columnIndex)));
                             break;
+                        case ID_LONG:
+                            field.set(instance, new LongId(cursor.getLong(columnIndex)));
+                            break;
+                        case ID_TEXT:
+                            field.set(instance, new UUIDId(cursor.getString(columnIndex)));
+                            break;
                         case ENUM:
                             int i = cursor.getInt(columnIndex);
                             Class c = field.getType();
@@ -370,7 +375,7 @@ public abstract class GenericModel<T extends BaseModel> {
                 switch (id) {
 
                     case LONG:
-                        sDataTypeCache.put(name, DataTypeEnum.ID_INTEGER);
+                        sDataTypeCache.put(name, DataTypeEnum.ID_LONG);
                         break;
                     case UUID:
                         sDataTypeCache.put(name, DataTypeEnum.ID_TEXT);
@@ -730,7 +735,7 @@ public abstract class GenericModel<T extends BaseModel> {
         BOOLEAN,
         ENUM,
         ID_TEXT,
-        ID_INTEGER
+        ID_LONG
     }
 
     public enum SimpleDaoSystemFieldsEnum {
