@@ -123,8 +123,14 @@ public abstract class GenericModel<T extends BaseModel> {
                     case INTEGER:
                         cv.put(field.getName(), (Integer) getValueFromField(field));
                         break;
+                    case ID_INTEGER:
+                        cv.put(field.getName(), Integer.valueOf(((UUIDId) getValueFromField(field)).getId()));
+                        break;
                     case TEXT:
                         cv.put(field.getName(), (String) getValueFromField(field));
+                        break;
+                    case ID_TEXT:
+                        cv.put(field.getName(), ((UUIDId) getValueFromField(field)).getId());
                         break;
                     case DOUBLE:
                         cv.put(field.getName(), (Double) getValueFromField(field));
@@ -355,6 +361,22 @@ public abstract class GenericModel<T extends BaseModel> {
 
                 dte = dt.type();
                 sDataTypeCache.put(name, dte);
+            } else if (field.getAnnotation(ForeignKey.class) != null){
+
+                ForeignKey foreignKey = field.getAnnotation(ForeignKey.class);
+
+                IdTypeEnum id = getIdType(foreignKey.attributeClass());
+
+                switch (id) {
+
+                    case LONG:
+                        sDataTypeCache.put(name, DataTypeEnum.ID_INTEGER);
+                        break;
+                    case UUID:
+                        sDataTypeCache.put(name, DataTypeEnum.ID_TEXT);
+                        break;
+                }
+
             } else {
 
                 sDataTypeCache.put(name, null);
@@ -396,6 +418,7 @@ public abstract class GenericModel<T extends BaseModel> {
                 Unique unique = field.getAnnotation(Unique.class);
                 Index index = field.getAnnotation(Index.class);
 
+
                 switch (dt) {
 
                     case BLOB:
@@ -426,6 +449,8 @@ public abstract class GenericModel<T extends BaseModel> {
 
                     ctsb.addSimpleIndex(field.getName());
                 }
+
+
             }
 
             SimpleDaoSystemFieldsEnum sdsfe = getCachedInternalField(clazz, field);
@@ -448,6 +473,32 @@ public abstract class GenericModel<T extends BaseModel> {
                                 break;
                         }
                 }
+            }
+
+            ForeignKey foreignKey = field.getAnnotation(ForeignKey.class);
+
+            if (foreignKey != null) {
+
+                String tableName = getTableName(foreignKey.attributeClass());
+
+                if (field.getType() != Id.class) {
+
+                    throw new SimpleDroidDaoException("with ForeignKey annotation you have to use Id data type");
+                }
+
+                IdTypeEnum id = getIdType(foreignKey.attributeClass());
+
+                switch (id) {
+
+                    case LONG:
+                        ctsb.addIntegerColumn(field.getName(), true);
+                        break;
+                    case UUID:
+                        ctsb.addTextColumn(field.getName(), true);
+                        break;
+                }
+
+                ctsb.addForeignKey(field.getName(), tableName, SimpleDaoSystemFieldsEnum.ID.getName(), foreignKey.deleteOnCascade(), foreignKey.updateOnCascade());
             }
         }
 
@@ -484,13 +535,13 @@ public abstract class GenericModel<T extends BaseModel> {
         // namapuji objekt na db objekt
         ContentValues cv = getContentValuesFromObject();
 
-        T object = (T)this;
+        T object = (T) this;
 
         boolean isUpdate = false;
 
         try {
             // pokud nema objekt vyplnene id, pak vytvarime novy zaznam do DB
-            if (((AbstractId)object.id).operationType() == AbstractId.OperationType.CREATE) {
+            if (((AbstractId) object.id).operationType() == AbstractId.OperationType.CREATE) {
 
                 // insertujem do db
                 long id = getSQLiteDatabase(this.getClass()).insertOrThrow(getTableName(object.getClass()), null, cv);
@@ -530,10 +581,7 @@ public abstract class GenericModel<T extends BaseModel> {
             }
         } catch (SQLiteConstraintException sce) {
 
-
-            //TODO
-            throw new DaoConstraintException(isUpdate ? DaoConstraintException.ConstraintsExceptionType.UPDATE :
-                    DaoConstraintException.ConstraintsExceptionType.INSERT, sce);
+            throw new SimpleDroidDaoException(isUpdate ? "update constraint exception" : "insert constraint exception");
         }
     }
 
@@ -628,7 +676,6 @@ public abstract class GenericModel<T extends BaseModel> {
     }
 
 
-
     private static <T extends BaseModel> IdTypeEnum getIdType(Class<?> clazz) {
 
         IdTypeEnum typeEnum = sIdTypeEnumMap.get(clazz);
@@ -647,6 +694,7 @@ public abstract class GenericModel<T extends BaseModel> {
         return typeEnum;
     }
 
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
     public @interface TableName {
@@ -656,7 +704,8 @@ public abstract class GenericModel<T extends BaseModel> {
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
-    public @interface Entity {}
+    public @interface Entity {
+    }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
@@ -679,7 +728,9 @@ public abstract class GenericModel<T extends BaseModel> {
         BLOB,
         DATE,
         BOOLEAN,
-        ENUM
+        ENUM,
+        ID_TEXT,
+        ID_INTEGER
     }
 
     public enum SimpleDaoSystemFieldsEnum {
@@ -734,12 +785,11 @@ public abstract class GenericModel<T extends BaseModel> {
     public @interface ForeignKey {
 
         boolean deleteOnCascade() default false;
+
         boolean updateOnCascade() default false;
-        String attributeName();
+
         Class attributeClass();
     }
-
-
 
 
 }

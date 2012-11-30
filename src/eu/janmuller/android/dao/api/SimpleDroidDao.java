@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
+import eu.infomas.annotation.AnnotationDetector;
 import eu.janmuller.android.dao.DaoConstants;
 import eu.janmuller.android.dao.exceptions.SimpleDroidDaoException;
 

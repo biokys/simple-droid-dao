@@ -18,6 +18,7 @@ class CreateTableSqlBuilder {
     private String mSql;
 
     private List<String> mPartialSqls = new ArrayList<String>();
+    private List<String> mConstraintSqls = new ArrayList<String>();
 
     private List<String> mCreateIndexCommands;
 
@@ -238,8 +239,8 @@ class CreateTableSqlBuilder {
 
         cascadeString = cascadeDeleteString + cascadeUpdateString;
 
-        this.mSql += ", CONSTRAINT FK_" + attributeName + "__" + foreignTableName + "_" + foreignAttribute + " FOREIGN KEY(" + attributeName + ") REFERENCES " +
-                foreignTableName + "(" + foreignAttribute + ")" + cascadeString;
+        mConstraintSqls.add(" CONSTRAINT FK_" + attributeName + "__" + foreignTableName + "_" + foreignAttribute + " FOREIGN KEY(" + attributeName + ") REFERENCES " +
+                foreignTableName + "(" + foreignAttribute + ")" + cascadeString + " ");
         return this;
     }
 
@@ -293,7 +294,7 @@ class CreateTableSqlBuilder {
 
             conflictSql = " ON CONFLICT " + conflict.getConflict();
         }
-        this.mSql += ", UNIQUE(" + attributeSql + ")" + conflictSql;
+        mPartialSqls.add(" UNIQUE(" + attributeSql + ")" + conflictSql + " ");
 
         return this;
     }
@@ -325,7 +326,15 @@ class CreateTableSqlBuilder {
     String create() {
 
         String[] partials = mPartialSqls.toArray(new String[mPartialSqls.size()]);
-        mSql += join(',', partials);
+        String[] constraints = mConstraintSqls.toArray(new String[mConstraintSqls.size()]);
+        String par = join(',', partials);
+
+        if (mConstraintSqls.size() > 0) {
+
+            par += "," + join(',', constraints);
+        }
+
+        mSql += par;
         mSql += ");";
 
         if (!mCreateIndexCommands.isEmpty()) {
