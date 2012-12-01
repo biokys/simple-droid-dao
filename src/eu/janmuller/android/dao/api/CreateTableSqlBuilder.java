@@ -19,6 +19,8 @@ class CreateTableSqlBuilder {
 
     private List<String> mPartialSqls = new ArrayList<String>();
     private List<String> mConstraintSqls = new ArrayList<String>();
+    private List<String> mUniqueColumns = new ArrayList<String>();
+    private String mUniqueSql;
 
     private List<String> mCreateIndexCommands;
 
@@ -261,40 +263,11 @@ class CreateTableSqlBuilder {
     /**
      * Vytvori UNIQUE constrain na jednom nebo vice sloupeccich
      *
-     * @param attributeNames pole nazvu sloupcu
+     * @param attributeName pole nazvu sloupcu
      */
-    public CreateTableSqlBuilder addUniqueConstrain(String... attributeNames) {
+    public CreateTableSqlBuilder addUniqueConstrain(String attributeName) {
 
-        return addUniqueConstrain(null, attributeNames);
-    }
-
-    /**
-     * Vytvori UNIQUE constrain na jednom nebo vice sloupeccich
-     *
-     * @param conflict       conflict strategie
-     * @param attributeNames pole nazvu sloupcu
-     */
-    public CreateTableSqlBuilder addUniqueConstrain(Conflicts conflict, String... attributeNames) {
-
-        String conflictSql = "";
-
-        String attributeSql;
-
-        int attributeCount = attributeNames.length;
-
-        if (attributeCount == 0) {
-
-            throw new IllegalStateException("no attributes defined");
-        } else {
-
-            attributeSql = join(',', attributeNames);
-        }
-
-        if (conflict != null) {
-
-            conflictSql = " ON CONFLICT " + conflict.getConflict();
-        }
-        mPartialSqls.add(" UNIQUE(" + attributeSql + ")" + conflictSql + " ");
+        mUniqueColumns.add(attributeName);
 
         return this;
     }
@@ -335,6 +308,13 @@ class CreateTableSqlBuilder {
         }
 
         mSql += par;
+
+        String[] uniques = mUniqueColumns.toArray(new String[mUniqueColumns.size()]);
+        if (uniques != null && uniques.length > 0) {
+
+            mSql += ", UNIQUE(" + join(',', uniques) + ") ";
+        }
+
         mSql += ");";
 
         if (!mCreateIndexCommands.isEmpty()) {
@@ -346,6 +326,8 @@ class CreateTableSqlBuilder {
         }
 
         mPartialSqls.clear();
+        mConstraintSqls.clear();
+        mUniqueColumns.clear();
         return mSql;
     }
 

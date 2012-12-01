@@ -16,16 +16,4 @@ public class BaseDateModel<T extends BaseModel> extends BaseModel<T> {
     @GenericModel.InternalFieldType(type = SimpleDaoSystemFieldsEnum.MODIFY)
     public Date modifiedDate;
 
-   /* @Override
-    public Date getCreationDate() {
-
-        return creationDate;
-    }
-
-    @Override
-    public Date getModifiedDate() {
-
-        return modifiedDate;
-    }*/
-
 }

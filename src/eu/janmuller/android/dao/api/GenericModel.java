@@ -9,6 +9,7 @@ import eu.janmuller.android.dao.api.id.AbstractId;
 import eu.janmuller.android.dao.api.id.Id;
 import eu.janmuller.android.dao.api.id.LongId;
 import eu.janmuller.android.dao.api.id.UUIDId;
+import eu.janmuller.android.dao.exceptions.ConstraintExceptionFactory;
 import eu.janmuller.android.dao.exceptions.SimpleDroidDaoException;
 
 import java.lang.annotation.ElementType;
@@ -503,6 +504,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         break;
                 }
 
+                ctsb.addSimpleIndex(field.getName());
                 ctsb.addForeignKey(field.getName(), tableName, SimpleDaoSystemFieldsEnum.ID.getName(), foreignKey.deleteOnCascade(), foreignKey.updateOnCascade());
             }
         }
@@ -586,7 +588,7 @@ public abstract class GenericModel<T extends BaseModel> {
             }
         } catch (SQLiteConstraintException sce) {
 
-            throw new SimpleDroidDaoException(isUpdate ? "update constraint exception" : "insert constraint exception");
+            throw ConstraintExceptionFactory.getException(sce);
         }
     }
 

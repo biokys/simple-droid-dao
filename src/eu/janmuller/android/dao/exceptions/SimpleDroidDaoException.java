@@ -12,6 +12,10 @@ public class SimpleDroidDaoException extends RuntimeException {
         super(detailMessage);
     }
 
+    public SimpleDroidDaoException(String detailMessage, Throwable throwable) {
+        super(detailMessage, throwable);
+    }
+
     public SimpleDroidDaoException(Throwable throwable) {
         super(throwable);
     }
