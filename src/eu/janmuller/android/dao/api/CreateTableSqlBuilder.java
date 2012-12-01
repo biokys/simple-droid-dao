@@ -1,6 +1,8 @@
 package eu.janmuller.android.dao.api;
 
 
+import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -253,7 +255,7 @@ class CreateTableSqlBuilder {
      */
     public CreateTableSqlBuilder addSimpleIndex(String attributeName) {
 
-        String createIndexCommand = "CREATE INDEX " + this.mTableName + "_" + attributeName + "_idx ON " + this.mTableName + "(" + attributeName + ");";
+        String createIndexCommand = "CREATE INDEX IF NOT EXISTS " + this.mTableName + "_" + attributeName + "_idx ON " + this.mTableName + "(" + attributeName + ");";
 
         this.mCreateIndexCommands.add(createIndexCommand);
 
@@ -328,6 +330,7 @@ class CreateTableSqlBuilder {
         mPartialSqls.clear();
         mConstraintSqls.clear();
         mUniqueColumns.clear();
+
         return mSql;
     }
 

@@ -124,7 +124,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         cv.put(field.getName(), (Integer) getValueFromField(field));
                         break;
                     case ID_LONG:
-                        cv.put(field.getName(), Long.valueOf(((UUIDId) getValueFromField(field)).getId()));
+                        cv.put(field.getName(), ((LongId) getValueFromField(field)).getId());
                         break;
                     case TEXT:
                         cv.put(field.getName(), (String) getValueFromField(field));
@@ -385,7 +385,7 @@ public abstract class GenericModel<T extends BaseModel> {
 
             } else {
 
-                sDataTypeCache.put(name, null);
+                sDataTypeCache.put(name, DataTypeEnum.NONE);
             }
         }
         return dte;
@@ -737,7 +737,8 @@ public abstract class GenericModel<T extends BaseModel> {
         BOOLEAN,
         ENUM,
         ID_TEXT,
-        ID_LONG
+        ID_LONG,
+        NONE
     }
 
     public enum SimpleDaoSystemFieldsEnum {
