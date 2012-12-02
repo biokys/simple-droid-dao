@@ -32,6 +32,7 @@ public abstract class GenericModel<T extends BaseModel> {
     private static Map<String, DataTypeEnum> sDataTypeCache = new HashMap<String, DataTypeEnum>();
     private static Map<String, SimpleDaoSystemFieldsEnum> sInternalFieldCache = new HashMap<String, SimpleDaoSystemFieldsEnum>();
     private static Map<Class, List<Field>> sFieldsCache = new HashMap<Class, List<Field>>();
+    private static Map<String, Object[]> sEnumCache = new HashMap<String, Object[]>();
     private static Date sDate = new Date();
 
     public static void beginTx() {
@@ -50,6 +51,11 @@ public abstract class GenericModel<T extends BaseModel> {
     }
 
     public static <T extends BaseModel> T findObjectById(Class<T> clazz, Id id) {
+
+        if (id == null) {
+
+            throw new SimpleDroidDaoException("no id specified");
+        }
 
         T object = null;
         Cursor cursor = getSQLiteDatabase(clazz).rawQuery("SELECT * FROM " + getTableName(clazz)
@@ -278,8 +284,7 @@ public abstract class GenericModel<T extends BaseModel> {
                             break;
                         case ENUM:
                             int i = cursor.getInt(columnIndex);
-                            Class c = field.getType();
-                            field.set(instance, getCachedFields(c).get(i).get(instance));
+                            field.set(instance, getCachedEnums(clazz, field)[i]);
                             break;
                     }
                 } catch (IllegalAccessException e) {
@@ -326,6 +331,22 @@ public abstract class GenericModel<T extends BaseModel> {
         return instance;
     }
 
+    private static Object[] getCachedEnums(Class clazz, Field field) {
+
+        String name = clazz.getName().concat(field.getName());
+
+        Object[] objects = sEnumCache.get(name);
+
+        if (objects == null) {
+
+            Class c = field.getType();
+            objects = c.getEnumConstants();
+            sEnumCache.put(name, objects);
+        }
+
+        return objects;
+    }
+
     private Object getValueFromField(Field f) {
 
         Object value;
@@ -366,7 +387,6 @@ public abstract class GenericModel<T extends BaseModel> {
             if (dt != null) {
 
                 dte = dt.type();
-                sDataTypeCache.put(name, dte);
             } else if (field.getAnnotation(ForeignKey.class) != null){
 
                 ForeignKey foreignKey = field.getAnnotation(ForeignKey.class);
@@ -376,17 +396,21 @@ public abstract class GenericModel<T extends BaseModel> {
                 switch (id) {
 
                     case LONG:
-                        sDataTypeCache.put(name, DataTypeEnum.ID_LONG);
+
+                        dte = DataTypeEnum.ID_LONG;
                         break;
                     case UUID:
-                        sDataTypeCache.put(name, DataTypeEnum.ID_TEXT);
+
+                        dte = DataTypeEnum.ID_TEXT;
                         break;
                 }
 
             } else {
 
-                sDataTypeCache.put(name, DataTypeEnum.NONE);
+                dte = DataTypeEnum.NONE;
             }
+
+            sDataTypeCache.put(name, dte);
         }
         return dte;
     }
