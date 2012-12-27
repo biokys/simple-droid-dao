@@ -1,8 +1,4 @@
-package eu.janmuller.android.dao.api.id;
-
-import eu.janmuller.android.dao.api.id.Id;
-
-import java.io.Serializable;
+package eu.janmuller.android.dao.api;
 
 /**
  * Created with IntelliJ IDEA.
@@ -18,22 +14,31 @@ abstract public class AbstractId<T> implements Id<T> {
         CREATE
     }
 
-    protected T t;
+    protected T mId;
+
+    boolean mPrimaryKey = false;
 
     protected AbstractId(T t) {
 
-        this.t = t;
+        this.mId = t;
     }
 
     @Override
     public T getId() {
 
-        return t;
+        return mId;
+    }
+
+    @Override
+    public boolean isPrimaryKey() {
+        return mPrimaryKey;
     }
 
     /**
      * Whether to create or update
      */
-    public abstract OperationType operationType();
+    abstract OperationType operationType();
+
+
 
 }

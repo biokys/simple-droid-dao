@@ -1,7 +1,5 @@
 package eu.janmuller.android.dao.api;
 
-import eu.janmuller.android.dao.api.id.Id;
-
 import java.io.Serializable;
 
 /**

@@ -5,10 +5,6 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
-import eu.janmuller.android.dao.api.id.AbstractId;
-import eu.janmuller.android.dao.api.id.Id;
-import eu.janmuller.android.dao.api.id.LongId;
-import eu.janmuller.android.dao.api.id.UUIDId;
 import eu.janmuller.android.dao.exceptions.ConstraintExceptionFactory;
 import eu.janmuller.android.dao.exceptions.SimpleDroidDaoException;
 
@@ -123,6 +119,9 @@ public abstract class GenericModel<T extends BaseModel> {
 
                 switch (dt) {
 
+                    case LONG:
+                        cv.put(field.getName(), (Long) getValueFromField(field));
+                        break;
                     case BLOB:
                         cv.put(field.getName(), (byte[]) getValueFromField(field));
                         break;
@@ -151,7 +150,11 @@ public abstract class GenericModel<T extends BaseModel> {
                         cv.put(field.getName(), ((Date) getValueFromField(field)).getTime());
                         break;
                     case ENUM:
-                        cv.put(field.getName(), ((Enum) getValueFromField(field)).ordinal());
+                        Enum _enum = (Enum) getValueFromField(field);
+                        if (_enum != null) {
+
+                            cv.put(field.getName(), _enum.ordinal());
+                        }
                         break;
                 }
             }
@@ -217,7 +220,7 @@ public abstract class GenericModel<T extends BaseModel> {
                                     break;
                                 case UUID:
                                     cv.put(sdsfe.getName(), (String) id.getId());
-                                    ((UUIDId) id).create = false;
+                                    ((UUIDId) id).create = ((UUIDId)id).manuallySet ? true : false;
                                     break;
                                 default:
                                     throw new SimpleDroidDaoException("you shouldnt be here");
@@ -255,6 +258,9 @@ public abstract class GenericModel<T extends BaseModel> {
                 try {
                     switch (dt) {
 
+                        case LONG:
+                            field.set(instance, cursor.getLong(columnIndex));
+                            break;
                         case BLOB:
                             field.set(instance, cursor.getBlob(columnIndex));
                             break;
@@ -311,10 +317,14 @@ public abstract class GenericModel<T extends BaseModel> {
                             switch (getIdType((instance).getClass())) {
 
                                 case LONG:
-                                    field.set(instance, new LongId(cursor.getLong(columnIndex)));
+                                    LongId longId = new LongId(cursor.getLong(columnIndex));
+                                    longId.mPrimaryKey = true;
+                                    field.set(instance, longId);
                                     break;
                                 case UUID:
-                                    field.set(instance, new UUIDId(cursor.getString(columnIndex)));
+                                    UUIDId uuidId = new UUIDId(cursor.getString(columnIndex));
+                                    uuidId.mPrimaryKey = true;
+                                    field.set(instance, uuidId);
                                     break;
                                 default:
                                     throw new IllegalStateException("you shouldnt be here");
@@ -457,6 +467,7 @@ public abstract class GenericModel<T extends BaseModel> {
                     case DATE:
                     case INTEGER:
                     case BOOLEAN:
+                    case LONG:
                     case ENUM:
                         ctsb.addIntegerColumn(field.getName(), notNull != null);
                         break;
@@ -753,6 +764,7 @@ public abstract class GenericModel<T extends BaseModel> {
     public enum DataTypeEnum {
 
         INTEGER,
+        LONG,
         DOUBLE,
         FLOAT,
         TEXT,

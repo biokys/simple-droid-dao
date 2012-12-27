@@ -1,4 +1,4 @@
-package eu.janmuller.android.dao.api.id;
+package eu.janmuller.android.dao.api;
 
 import java.util.UUID;
 
@@ -11,7 +11,9 @@ import java.util.UUID;
 public class UUIDId extends AbstractId<String> {
 
     // pomocna promenna, ktera slouzi jako pomocny prostredek k rozpoznani, zda objekt ulozit, nebo updatovat
-    public boolean create;
+    transient boolean create;
+
+    transient boolean manuallySet;
 
     String id;
 
@@ -29,13 +31,21 @@ public class UUIDId extends AbstractId<String> {
         return UUID.randomUUID().toString();
     }
 
+    /**
+     * Usefull when you want to set UUID manually and insert new object (not update)
+     */
+    public void manuallySetId(boolean manually) {
+
+        manuallySet = manually;
+    }
+
     @Override
     public String toString() {
         return getId();
     }
 
     @Override
-    public OperationType operationType() {
+    OperationType operationType() {
 
         return create ? OperationType.CREATE : OperationType.UPDATE;
     }
@@ -47,13 +57,13 @@ public class UUIDId extends AbstractId<String> {
 
         UUIDId uuidId = (UUIDId) o;
 
-        if (t != null ? !t.equals(uuidId.t) : uuidId.t != null) return false;
+        if (mId != null ? !mId.equals(uuidId.mId) : uuidId.mId != null) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        return t != null ? t.hashCode() : 0;
+        return mId != null ? mId.hashCode() : 0;
     }
 }

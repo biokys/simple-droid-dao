@@ -1,4 +1,4 @@
-package eu.janmuller.android.dao.api.id;
+package eu.janmuller.android.dao.api;
 
 import java.io.Serializable;
 
@@ -11,5 +11,7 @@ import java.io.Serializable;
 public interface Id<U> extends Serializable {
 
     public U getId();
+
+    public boolean isPrimaryKey();
 
 }
