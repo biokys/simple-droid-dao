@@ -31,6 +31,8 @@ public abstract class GenericModel<T extends BaseModel> {
     private static Map<String, Object[]> sEnumCache = new HashMap<String, Object[]>();
     private static Date sDate = new Date();
 
+    private SimpleDroidDaoEventMonitor mEventMonitor = SimpleDroidDaoEventMonitor.getInstance();
+
     public static void beginTx() {
 
         getSQLiteDatabase().beginTransaction();
@@ -596,6 +598,7 @@ public abstract class GenericModel<T extends BaseModel> {
 
                         object.id = new LongId(id);
                     }
+                    mEventMonitor.notifyOnCreateObject(object);
                     return object;
                 } else {
 
@@ -613,6 +616,7 @@ public abstract class GenericModel<T extends BaseModel> {
                 // pokud update probehl v poradku
                 if (updatedID > 0) {
 
+                    mEventMonitor.notifyOnUpdateObject(object);
                     // vratime vygenerovane id
                     return object;
                 } else {
@@ -675,6 +679,8 @@ public abstract class GenericModel<T extends BaseModel> {
 
         getSQLiteDatabase(this.getClass()).delete(getTableName(getClass()), SimpleDaoSystemFieldsEnum.ID + "=?",
                 new String[]{bm.id.toString()});
+
+        mEventMonitor.notifyOnDeleteObject(bm);
 
         bm.id = null;
     }
