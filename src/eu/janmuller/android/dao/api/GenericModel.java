@@ -131,13 +131,21 @@ public abstract class GenericModel<T extends BaseModel> {
                         cv.put(field.getName(), (Integer) getValueFromField(field));
                         break;
                     case ID_LONG:
-                        cv.put(field.getName(), ((LongId) getValueFromField(field)).getId());
+                        LongId idLong = (LongId)getValueFromField(field);
+                        if (idLong != null) {
+
+                            cv.put(field.getName(), idLong.getId());
+                        }
                         break;
                     case TEXT:
                         cv.put(field.getName(), (String) getValueFromField(field));
                         break;
                     case ID_TEXT:
-                        cv.put(field.getName(), ((UUIDId) getValueFromField(field)).getId());
+                        UUIDId idUUID = (UUIDId)getValueFromField(field);
+                        if (idUUID != null) {
+
+                            cv.put(field.getName(), idUUID.getId());
+                        }
                         break;
                     case DOUBLE:
                         cv.put(field.getName(), (Double) getValueFromField(field));
@@ -149,7 +157,11 @@ public abstract class GenericModel<T extends BaseModel> {
                         cv.put(field.getName(), (Boolean) getValueFromField(field));
                         break;
                     case DATE:
-                        cv.put(field.getName(), ((Date) getValueFromField(field)).getTime());
+                        Date date = (Date)getValueFromField(field);
+                        if (date != null) {
+
+                            cv.put(field.getName(), date.getTime());
+                        }
                         break;
                     case ENUM:
                         Enum _enum = (Enum) getValueFromField(field);
