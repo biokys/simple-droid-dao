@@ -31,7 +31,7 @@ public abstract class GenericModel<T extends BaseModel> {
     private static Map<String, Object[]> sEnumCache = new HashMap<String, Object[]>();
     private static Date sDate = new Date();
 
-    private SimpleDroidDaoEventMonitor mEventMonitor = SimpleDroidDaoEventMonitor.getInstance();
+    private transient SimpleDroidDaoEventMonitor mEventMonitor = SimpleDroidDaoEventMonitor.getInstance();
 
     public static void beginTx() {
 
