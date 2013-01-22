@@ -105,7 +105,11 @@ public abstract class GenericModel<T extends BaseModel> {
             return 0;
         }
 
-        return c.moveToFirst() ? c.getInt(0) : 0;
+        int size = c.moveToFirst() ? c.getInt(0) : 0;
+
+        c.close();
+
+        return size;
     }
 
     protected ContentValues getContentValuesFromObject() {

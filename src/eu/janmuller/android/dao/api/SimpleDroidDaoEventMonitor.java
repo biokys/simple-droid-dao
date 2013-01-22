@@ -58,7 +58,7 @@ public class SimpleDroidDaoEventMonitor {
 
         for (IBaseEventListener  baseEventListener : mBaseEventListeners) {
 
-            if (baseEventListener instanceof ISaveEventListener) {
+            if (baseEventListener instanceof IUpdateEventListener) {
 
                 ((IUpdateEventListener) baseEventListener).onUpdate(baseModel);
             }
