@@ -55,16 +55,25 @@ public abstract class GenericModel<T extends BaseModel> {
             throw new SimpleDroidDaoException("no id specified");
         }
 
-        T object = null;
-        Cursor cursor = getSQLiteDatabase(clazz).rawQuery("SELECT * FROM " + getTableName(clazz)
+        Cursor cursor = getSQLiteDatabaseForReading().rawQuery("SELECT * FROM " + getTableName(clazz)
                 + " WHERE " + SimpleDaoSystemFieldsEnum.ID + "=? LIMIT 1", new String[]{id.getId().toString()});
 
-        if (cursor != null && cursor.moveToFirst()) {
+        if (cursor == null) {
 
-            object = getObjectFromCursor(clazz, cursor);
+            return null;
+        }
+
+        T object = null;
+
+        try {
+
+            if (cursor.moveToFirst()) {
+
+                object = getObjectFromCursor(clazz, cursor);
+            }
+        } finally {
 
             cursor.close();
-
         }
         return object;
     }
@@ -77,7 +86,7 @@ public abstract class GenericModel<T extends BaseModel> {
 
     public static <U extends BaseModel> Cursor getAllObjectsInCursor(Class<U> clazz) {
 
-        return getSQLiteDatabase(clazz).rawQuery("SELECT *, rowid _id FROM " + getTableName(clazz), null);
+        return getSQLiteDatabaseForReading().rawQuery("SELECT *, rowid _id FROM " + getTableName(clazz), null);
     }
 
     public static <T extends BaseModel> List<T> getByQuery(Class<T> clazz, String whereClause) {
@@ -91,23 +100,29 @@ public abstract class GenericModel<T extends BaseModel> {
 
         String selectQuery = "SELECT *, rowid _id FROM " + getTableName(clazz) + " WHERE " + whereClause;
 
-        return getSQLiteDatabase(clazz).rawQuery(selectQuery, null);
+        return getSQLiteDatabaseForReading().rawQuery(selectQuery, null);
     }
 
     public static <T extends BaseModel> int getCountByQuery(Class<T> clazz, String whereClause) {
 
         String selectQuery = "SELECT COUNT(1) FROM " + getTableName(clazz) + " WHERE " + whereClause;
 
-        Cursor c = getSQLiteDatabase(clazz).rawQuery(selectQuery, null);
+        Cursor c = getSQLiteDatabaseForReading().rawQuery(selectQuery, null);
 
         if (c == null) {
 
             return 0;
         }
 
-        int size = c.moveToFirst() ? c.getInt(0) : 0;
+        int size;
+        try {
 
-        c.close();
+            size = c.moveToFirst() ? c.getInt(0) : 0;
+        } finally {
+
+            c.close();
+        }
+
 
         return size;
     }
@@ -135,7 +150,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         cv.put(field.getName(), (Integer) getValueFromField(field));
                         break;
                     case ID_LONG:
-                        LongId idLong = (LongId)getValueFromField(field);
+                        LongId idLong = (LongId) getValueFromField(field);
                         if (idLong != null) {
 
                             cv.put(field.getName(), idLong.getId());
@@ -145,7 +160,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         cv.put(field.getName(), (String) getValueFromField(field));
                         break;
                     case ID_TEXT:
-                        UUIDId idUUID = (UUIDId)getValueFromField(field);
+                        UUIDId idUUID = (UUIDId) getValueFromField(field);
                         if (idUUID != null) {
 
                             cv.put(field.getName(), idUUID.getId());
@@ -161,7 +176,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         cv.put(field.getName(), (Boolean) getValueFromField(field));
                         break;
                     case DATE:
-                        Date date = (Date)getValueFromField(field);
+                        Date date = (Date) getValueFromField(field);
                         if (date != null) {
 
                             cv.put(field.getName(), date.getTime());
@@ -238,7 +253,7 @@ public abstract class GenericModel<T extends BaseModel> {
                                     break;
                                 case UUID:
                                     cv.put(sdsfe.getName(), (String) id.getId());
-                                    ((UUIDId) id).create = ((UUIDId)id).manuallySet ? true : false;
+                                    ((UUIDId) id).create = ((UUIDId) id).manuallySet ? true : false;
                                     break;
                                 default:
                                     throw new SimpleDroidDaoException("you shouldnt be here");
@@ -415,7 +430,7 @@ public abstract class GenericModel<T extends BaseModel> {
             if (dt != null) {
 
                 dte = dt.type();
-            } else if (field.getAnnotation(ForeignKey.class) != null){
+            } else if (field.getAnnotation(ForeignKey.class) != null) {
 
                 ForeignKey foreignKey = field.getAnnotation(ForeignKey.class);
 
@@ -578,6 +593,11 @@ public abstract class GenericModel<T extends BaseModel> {
         return SimpleDroidDao.getOpenedDatabase();
     }
 
+    private static SQLiteDatabase getSQLiteDatabaseForReading() {
+
+        return SimpleDroidDao.getOpenedDatabaseForReading();
+    }
+
     public static <T extends BaseModel> Map<Id, T> getAllObjectsAsMap(Class<T> clazz) {
 
         Map<Id, T> map = new HashMap<Id, T>();
@@ -657,24 +677,28 @@ public abstract class GenericModel<T extends BaseModel> {
             return list;
         }
 
-        // pokud v kurzoru je alespon jeden zaznam
-        if (cursor.moveToFirst()) {
+        try {
 
-            // prochazej pres vsechny zaznamy v cursoru dokud muzes
-            do {
+            // pokud v kurzoru je alespon jeden zaznam
+            if (cursor.moveToFirst()) {
 
-                // vytvor objekt
+                // prochazej pres vsechny zaznamy v cursoru dokud muzes
+                do {
 
-                T object = getObjectFromCursor(clazz, cursor);
+                    // vytvor objekt
 
-                // a pridej ho do seznamu
-                list.add(object);
+                    T object = getObjectFromCursor(clazz, cursor);
 
-            } while (cursor.moveToNext());
+                    // a pridej ho do seznamu
+                    list.add(object);
+
+                } while (cursor.moveToNext());
+            }
+        } finally {
+
+            // uzavreme cursor
+            cursor.close();
         }
-
-        // uzavreme cursor
-        cursor.close();
 
         return list;
     }

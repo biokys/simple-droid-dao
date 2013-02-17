@@ -154,6 +154,11 @@ public final class SimpleDroidDao {
         return databaseHelper.getWritableDatabase();
     }
 
+    public static SQLiteDatabase getOpenedDatabaseForReading() {
+
+        return databaseHelper.getReadableDatabase();
+    }
+
     static SQLiteDatabase getOpenedDatabase() {
 
         return databaseHelper.getWritableDatabase();
