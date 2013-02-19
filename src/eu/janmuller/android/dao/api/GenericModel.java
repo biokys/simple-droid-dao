@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
 import eu.janmuller.android.dao.exceptions.ConstraintExceptionFactory;
+import eu.janmuller.android.dao.exceptions.DaoConstraintException;
 import eu.janmuller.android.dao.exceptions.SimpleDroidDaoException;
 
 import java.lang.annotation.ElementType;
@@ -713,12 +714,18 @@ public abstract class GenericModel<T extends BaseModel> {
         getSQLiteDatabase(clazz).execSQL("drop table if exists " + getTableName(clazz));
     }
 
-    public void delete() {
+    public void delete() throws DaoConstraintException {
 
         BaseModel bm = (BaseModel) this;
 
-        getSQLiteDatabase(this.getClass()).delete(getTableName(getClass()), SimpleDaoSystemFieldsEnum.ID + "=?",
+        try {
+
+            getSQLiteDatabase(this.getClass()).delete(getTableName(getClass()), SimpleDaoSystemFieldsEnum.ID + "=?",
                 new String[]{bm.id.toString()});
+        } catch (SQLiteConstraintException sce) {
+
+            throw new DaoConstraintException(DaoConstraintException.ConstraintsExceptionType.DELETE, sce);
+        }
 
         mEventMonitor.notifyOnDeleteObject(bm);
 
