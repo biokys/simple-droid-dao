@@ -188,6 +188,9 @@ public abstract class GenericModel<T extends BaseModel> {
                         if (_enum != null) {
 
                             cv.put(field.getName(), _enum.ordinal());
+                        } else {
+
+                            cv.put(field.getName(), -1);
                         }
                         break;
                 }
@@ -324,7 +327,14 @@ public abstract class GenericModel<T extends BaseModel> {
                             break;
                         case ENUM:
                             int i = cursor.getInt(columnIndex);
-                            field.set(instance, getCachedEnums(clazz, field)[i]);
+
+                            if (i != -1) {
+
+                                field.set(instance, getCachedEnums(clazz, field)[i]);
+                            } else {
+
+                                field.set(instance, null);
+                            }
                             break;
                     }
                 } catch (IllegalAccessException e) {
@@ -741,14 +751,56 @@ public abstract class GenericModel<T extends BaseModel> {
 
     }
 
-    public static <T extends BaseModel> void deleteAll(Class<T> clazz) {
+    public static <T extends BaseModel> void deleteAll(Class<T> clazz) throws DaoConstraintException {
 
-        getSQLiteDatabase(clazz).delete(getTableName(clazz), null, null);
+        deleteAll(clazz, false);
     }
 
-    public static <T extends BaseModel> void deleteByQuery(Class<T> clazz, String whereClause) {
+    public static <T extends BaseModel> void deleteAll(Class<T> clazz, boolean fastWithoutNotification) throws DaoConstraintException {
 
-        getSQLiteDatabase(clazz).delete(getTableName(clazz), whereClause, null);
+        if (fastWithoutNotification) {
+
+            try {
+
+                getSQLiteDatabase(clazz).delete(getTableName(clazz), null, null);
+            } catch (SQLiteConstraintException sce) {
+
+                throw new DaoConstraintException(DaoConstraintException.ConstraintsExceptionType.DELETE, sce);
+            }
+        } else {
+
+            List<T> allObjects = getAllObjects(clazz);
+            for (T t : allObjects) {
+
+                t.delete();
+            }
+        }
+    }
+
+    public static <T extends BaseModel> void deleteByQuery(Class<T> clazz, String whereClause) throws DaoConstraintException{
+
+        deleteByQuery(clazz, whereClause, false);
+    }
+
+    public static <T extends BaseModel> void deleteByQuery(Class<T> clazz, String whereClause, boolean fastWithoutNotification) throws DaoConstraintException{
+
+        if (fastWithoutNotification) {
+
+            try {
+
+                getSQLiteDatabase(clazz).delete(getTableName(clazz), whereClause, null);
+            } catch (SQLiteConstraintException sce) {
+
+                throw new DaoConstraintException(DaoConstraintException.ConstraintsExceptionType.DELETE, sce);
+            }
+        } else {
+
+            List<T> list = getByQuery(clazz, whereClause);
+            for (T t : list) {
+
+                t.delete();
+            }
+        }
     }
 
     protected static <T extends BaseModel> String getTableName(Class<?> clazz) {
