@@ -24,13 +24,13 @@ import java.util.*;
  */
 public abstract class GenericModel<T extends BaseModel> {
 
-    private static Map<Class, IdTypeEnum> sIdTypeEnumMap = new HashMap<Class, IdTypeEnum>();
-    private static Map<Class, String> sTableNameMap = new HashMap<Class, String>();
-    private static Map<String, DataTypeEnum> sDataTypeCache = new HashMap<String, DataTypeEnum>();
+    private static Map<Class, IdTypeEnum>                 sIdTypeEnumMap      = new HashMap<Class, IdTypeEnum>();
+    private static Map<Class, String>                     sTableNameMap       = new HashMap<Class, String>();
+    private static Map<String, DataTypeEnum>              sDataTypeCache      = new HashMap<String, DataTypeEnum>();
     private static Map<String, SimpleDaoSystemFieldsEnum> sInternalFieldCache = new HashMap<String, SimpleDaoSystemFieldsEnum>();
-    private static Map<Class, List<Field>> sFieldsCache = new HashMap<Class, List<Field>>();
-    private static Map<String, Object[]> sEnumCache = new HashMap<String, Object[]>();
-    private static Date sDate = new Date();
+    private static Map<Class, List<Field>>                sFieldsCache        = new HashMap<Class, List<Field>>();
+    private static Map<String, Object[]>                  sEnumCache          = new HashMap<String, Object[]>();
+    private static Date                                   sDate               = new Date();
 
     private transient SimpleDroidDaoEventMonitor mEventMonitor = SimpleDroidDaoEventMonitor.getInstance();
 
@@ -218,8 +218,12 @@ public abstract class GenericModel<T extends BaseModel> {
                     case MODIFY:
 
                         bdm = (BaseDateModel) this;
-                        cv.put(sdsfe.getName(), now.getTime());
-                        bdm.modifiedDate = now;
+
+                        if (bdm.updateModifiedDate) {
+                            
+                            cv.put(sdsfe.getName(), now.getTime());
+                            bdm.modifiedDate = now;
+                        }
                         break;
                     case ID:
                         BaseModel bm = (BaseModel) this;
@@ -623,6 +627,11 @@ public abstract class GenericModel<T extends BaseModel> {
 
     public T save() {
 
+        return save(false);
+    }
+
+    public T save(boolean fastWithoutNotification) {
+
         // namapuji objekt na db objekt
         ContentValues cv = getContentValuesFromObject();
 
@@ -645,7 +654,11 @@ public abstract class GenericModel<T extends BaseModel> {
 
                         object.id = new LongId(id);
                     }
-                    mEventMonitor.notifyOnCreateObject(object);
+
+                    if (!fastWithoutNotification) {
+
+                        mEventMonitor.notifyOnCreateObject(object);
+                    }
                     return object;
                 } else {
 
@@ -663,7 +676,10 @@ public abstract class GenericModel<T extends BaseModel> {
                 // pokud update probehl v poradku
                 if (updatedID > 0) {
 
-                    mEventMonitor.notifyOnUpdateObject(object);
+                    if (!fastWithoutNotification) {
+
+                        mEventMonitor.notifyOnUpdateObject(object);
+                    }
                     // vratime vygenerovane id
                     return object;
                 } else {
@@ -731,7 +747,7 @@ public abstract class GenericModel<T extends BaseModel> {
         try {
 
             getSQLiteDatabase(this.getClass()).delete(getTableName(getClass()), SimpleDaoSystemFieldsEnum.ID + "=?",
-                new String[]{bm.id.toString()});
+                    new String[]{bm.id.toString()});
         } catch (SQLiteConstraintException sce) {
 
             throw new DaoConstraintException(DaoConstraintException.ConstraintsExceptionType.DELETE, sce);
@@ -777,12 +793,12 @@ public abstract class GenericModel<T extends BaseModel> {
         }
     }
 
-    public static <T extends BaseModel> void deleteByQuery(Class<T> clazz, String whereClause) throws DaoConstraintException{
+    public static <T extends BaseModel> void deleteByQuery(Class<T> clazz, String whereClause) throws DaoConstraintException {
 
         deleteByQuery(clazz, whereClause, false);
     }
 
-    public static <T extends BaseModel> void deleteByQuery(Class<T> clazz, String whereClause, boolean fastWithoutNotification) throws DaoConstraintException{
+    public static <T extends BaseModel> void deleteByQuery(Class<T> clazz, String whereClause, boolean fastWithoutNotification) throws DaoConstraintException {
 
         if (fastWithoutNotification) {
 

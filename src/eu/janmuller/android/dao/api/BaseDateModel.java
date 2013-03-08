@@ -10,6 +10,8 @@ import java.util.Date;
  */
 public class BaseDateModel<T extends BaseModel> extends BaseModel<T> {
 
+    public boolean updateModifiedDate = true;
+
     @GenericModel.InternalFieldType(type = GenericModel.SimpleDaoSystemFieldsEnum.CREATE)
     public Date creationDate;
 
