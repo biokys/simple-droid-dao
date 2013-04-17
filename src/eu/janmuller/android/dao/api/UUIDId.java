@@ -57,7 +57,7 @@ public class UUIDId extends AbstractId<String> {
 
         UUIDId uuidId = (UUIDId) o;
 
-        if (mId != null ? !mId.equals(uuidId.mId) : uuidId.mId != null) return false;
+        if (mId != null ? !mId.toString().equals(uuidId.mId.toString()) : uuidId.mId != null) return false;
 
         return true;
     }

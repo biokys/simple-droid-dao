@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 import eu.janmuller.android.dao.exceptions.ConstraintExceptionFactory;
 import eu.janmuller.android.dao.exceptions.DaoConstraintException;
 import eu.janmuller.android.dao.exceptions.SimpleDroidDaoException;
@@ -591,8 +592,9 @@ public abstract class GenericModel<T extends BaseModel> {
                 ctsb.addForeignKey(field.getName(), tableName, SimpleDaoSystemFieldsEnum.ID.getName(), foreignKey.deleteOnCascade(), foreignKey.updateOnCascade());
             }
         }
-
-        return ctsb.create();
+        String sql = ctsb.create();
+        Log.i("SQL create statement", sql);
+        return sql;
     }
 
     /**
@@ -608,7 +610,7 @@ public abstract class GenericModel<T extends BaseModel> {
         return SimpleDroidDao.getOpenedDatabase();
     }
 
-    private static SQLiteDatabase getSQLiteDatabaseForReading() {
+    public static SQLiteDatabase getSQLiteDatabaseForReading() {
 
         return SimpleDroidDao.getOpenedDatabaseForReading();
     }
@@ -819,7 +821,7 @@ public abstract class GenericModel<T extends BaseModel> {
         }
     }
 
-    protected static <T extends BaseModel> String getTableName(Class<?> clazz) {
+    public static <T extends BaseModel> String getTableName(Class<?> clazz) {
 
         String tableName = sTableNameMap.get(clazz);
 
