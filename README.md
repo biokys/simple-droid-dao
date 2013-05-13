@@ -93,7 +93,7 @@ public class UserFK extends BaseDateModel<UserFK> {
 
 public class Application extends android.app.Application {
         
-    public static final int NEW_DATABASE_VERSION = 5;
+    public static final int DATABASE_VERSION = 5;
 
     public static final String DB_NAME = "test.db";
 
@@ -108,7 +108,7 @@ public class Application extends android.app.Application {
         // this method initialize SDD system
         // if you want to manage db upgrade version, just implement IUpgradeHandler
         // if you dont, leave param null, and SDD will erase db after every version change
-        SimpleDroidDao.initialize(this, DB_NAME, NEW_DATABASE_VERSION, new SimpleDroidDao.IUpgradeHandler() {
+        SimpleDroidDao.initialize(this, DB_NAME, DATABASE_VERSION, new SimpleDroidDao.IUpgradeHandler() {
             @Override
             public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
 
