@@ -15,8 +15,6 @@ public class UUIDId extends AbstractId<String> {
 
     transient boolean manuallySet;
 
-    String id;
-
     public UUIDId(String id) {
         super(id);
     }

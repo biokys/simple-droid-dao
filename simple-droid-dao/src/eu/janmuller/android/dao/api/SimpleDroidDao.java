@@ -5,91 +5,63 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-import eu.janmuller.android.dao.DaoConstants;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Database helper class used to manage the creation and upgrading of your database. This class also usually provides
- * the DAOs used by the other classes.
+ * Main class for creating SimpleDroidDao context
  */
 public final class SimpleDroidDao {
 
-    private static String mDatabaseName;
+    public static final String LOG_TAG = "dao";
 
-    private static int mDatabaseVersion;
-
-    private static DatabaseHelper databaseHelper;
-
-    private static IUpgradeHandler mUpgradeHandler;
+    private static String          sDatabaseName;
+    private static int             sDatabaseVersion;
+    private static DatabaseHelper  sDatabaseHelper;
+    private static IUpgradeHandler sUpgradeHandler;
 
     private static List<Class<? extends BaseModel>> sModelClasses = new ArrayList<Class<? extends BaseModel>>();
 
+    private SimpleDroidDao() {
 
-    private SimpleDroidDao() {}
-
-    public static void initialize(Context context, String databaseName, int version, IUpgradeHandler upgradeHandler) {
-
-        mDatabaseName = databaseName;
-        mDatabaseVersion = version;
-        mUpgradeHandler = upgradeHandler;
-
-        //scanForModels(new String[] {"eu.janmuller.android.test.dao"});
-        databaseHelper = new DatabaseHelper(context);
     }
 
+    /**
+     * Initialice SDD context by this method. All Model classes must be registered before calling this method
+     * @param context
+     * @param databaseName Filename of your DB
+     * @param version DB version
+     * @param upgradeHandler Callback instance for managing db version upgrades
+     */
+    public static void initialize(Context context, String databaseName, int version, IUpgradeHandler upgradeHandler) {
+
+        sDatabaseName = databaseName;
+        sDatabaseVersion = version;
+        sUpgradeHandler = upgradeHandler;
+        sDatabaseHelper = new DatabaseHelper(context);
+    }
+
+    /**
+     * Every model class must be registered by this method. It must be called before initialize() method
+     * @param clazz
+     */
     public static void registerModelClass(Class<? extends BaseModel> clazz) {
 
         sModelClasses.add(clazz);
     }
 
-    /*private static void scanForModels(String[] packages) {
-
-        final List<Class> classes = new ArrayList<Class>();
-
-        AnnotationDetector annotationDetector = new AnnotationDetector(new AnnotationDetector.MethodReporter() {
-            @Override
-            public void reportMethodAnnotation(Class<? extends Annotation> annotation, String className, String methodName) {
-
-                try {
-
-                    Class<? extends BaseModel> clazz = (Class<? extends BaseModel>)Class.forName(className);
-                    sModelClasses.add(clazz);
-                } catch (ClassNotFoundException e) {
-
-                    throw new SimpleDroidDaoException(e);
-                }
-
-            }
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public Class<? extends Annotation>[] annotations() {
-                return new Class[] {GenericModel.Entity.class};
-            }
-        });
-
-
-        try {
-
-            annotationDetector.detect(packages);
-        } catch (IOException e) {
-
-            throw new SimpleDroidDaoException(e);
-        }
-    }*/
-
     static class DatabaseHelper extends SQLiteOpenHelper {
 
         DatabaseHelper(Context context) {
 
-            super(context, mDatabaseName, null, mDatabaseVersion);
+            super(context, sDatabaseName, null, sDatabaseVersion);
         }
 
         @Override
         public void onCreate(SQLiteDatabase db) {
 
-            Log.i(DaoConstants.LOG_TAG, "Creating tables...");
+            Log.i(LOG_TAG, "Creating tables...");
 
 
             for (Class<? extends BaseModel> model : sModelClasses) {
@@ -97,17 +69,16 @@ public final class SimpleDroidDao {
                 createTable(db, model);
             }
 
-
-            Log.i(DaoConstants.LOG_TAG, "tables created succesfully");
+            Log.i(LOG_TAG, "tables created succesfully");
 
         }
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 
-            Log.i(DaoConstants.LOG_TAG, "Upgrading database from version " + oldVersion + " to " + newVersion + ")");
+            Log.i(LOG_TAG, "Upgrading database from version " + oldVersion + " to " + newVersion + ")");
 
-            if (mUpgradeHandler == null) {
+            if (sUpgradeHandler == null) {
 
                 for (Class<? extends BaseModel> model : sModelClasses) {
 
@@ -117,18 +88,18 @@ public final class SimpleDroidDao {
 
             } else {
 
-                mUpgradeHandler.onUpgrade(db, oldVersion, newVersion);
+                sUpgradeHandler.onUpgrade(db, oldVersion, newVersion);
             }
         }
 
         @Override
         public void onOpen(SQLiteDatabase db) {
+
             super.onOpen(db);
 
-            // pokud neni db v readonly modu
             if (!db.isReadOnly()) {
 
-                // zapneme foreign keys
+                // turn on foreign keys
                 db.execSQL("PRAGMA foreign_keys=ON;");
             }
         }
@@ -146,22 +117,17 @@ public final class SimpleDroidDao {
 
     public static SQLiteDatabase getOpenedDatabase(Class clazz) {
 
-        /*if (!sModelClasses.contains(clazz)) {
-
-            throw new IllegalStateException("You have to call register method before for class " + clazz);
-        }*/
-
-        return databaseHelper.getWritableDatabase();
+        return sDatabaseHelper.getWritableDatabase();
     }
 
     public static SQLiteDatabase getOpenedDatabaseForReading() {
 
-        return databaseHelper.getReadableDatabase();
+        return sDatabaseHelper.getReadableDatabase();
     }
 
     static SQLiteDatabase getOpenedDatabase() {
 
-        return databaseHelper.getWritableDatabase();
+        return sDatabaseHelper.getWritableDatabase();
     }
 
     public interface IUpgradeHandler {
