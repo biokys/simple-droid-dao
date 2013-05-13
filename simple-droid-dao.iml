@@ -3,6 +3,10 @@
   <component name="FacetManager">
     <facet type="android" name="Android">
       <configuration>
+        <option name="MANIFEST_FILE_RELATIVE_PATH" value="/simple-droid-dao/AndroidManifest.xml" />
+        <option name="RES_FOLDER_RELATIVE_PATH" value="/simple-droid-dao/res" />
+        <option name="ASSETS_FOLDER_RELATIVE_PATH" value="/simple-droid-dao/assets" />
+        <option name="LIBS_FOLDER_RELATIVE_PATH" value="/simple-droid-dao/libs" />
         <option name="LIBRARY_PROJECT" value="true" />
         <includeSystemProguardFile>false</includeSystemProguardFile>
         <includeAssetsFromLibraries>true</includeAssetsFromLibraries>
@@ -12,10 +16,9 @@
   </component>
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
-    <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/gen" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/test" isTestSource="true" />
+    <content url="file://$MODULE_DIR$/simple-droid-dao">
+      <sourceFolder url="file://$MODULE_DIR$/simple-droid-dao/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/simple-droid-dao/gen" isTestSource="false" />
     </content>
     <orderEntry type="jdk" jdkName="Android 4.1 Google APIs" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
