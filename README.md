@@ -5,6 +5,13 @@ Simple DB access library for Android
 
 It is developed for extremely easy and fast access to Sqlite DB system on Android.
 
+Root folder contains
+--------------------
+
+- simple-droid-dao - main library project
+- simple-droid-dao-test - supporting empty android project for instrumentation test project
+- simple-droid-dao-test - instrumentation android project
+
 Fast tutorial
 ----------------
 This tutorial will show you how easy you can access db with your code. 
