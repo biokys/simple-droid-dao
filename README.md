@@ -1,9 +1,9 @@
-simple-droid-dao
+simple-droid-dao (SDD)
 ================
 
 Simple DB access library for Android
 
-It is developed for extremely easy and fast access to Sqlite DB system on Android.
+It is developed for extremely easy and fast access to Sqlite DB system on Android and is using ORM (Object-relational mapping) for transparent mapping of java classes to db tables.
 
 Root folder contains
 --------------------
