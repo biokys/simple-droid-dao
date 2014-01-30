@@ -20,18 +20,19 @@ public final class SimpleDroidDao {
     private static int             sDatabaseVersion;
     private static DatabaseHelper  sDatabaseHelper;
     private static IUpgradeHandler sUpgradeHandler;
+    private static SQLiteDatabase  sWritableDatabase;
 
     private static List<Class<? extends BaseModel>> sModelClasses = new ArrayList<Class<? extends BaseModel>>();
 
     private SimpleDroidDao() {
-
     }
 
     /**
-     * Initialice SDD context by this method. All Model classes must be registered before calling this method
+     * Initialize SDD context by this method. All Model classes must be registered before calling this method
+     *
      * @param context
-     * @param databaseName Filename of your DB
-     * @param version DB version
+     * @param databaseName   Filename of your DB
+     * @param version        DB version
      * @param upgradeHandler Callback instance for managing db version upgrades
      */
     public static void initialize(Context context, String databaseName, int version, IUpgradeHandler upgradeHandler) {
@@ -44,6 +45,7 @@ public final class SimpleDroidDao {
 
     /**
      * Every model class must be registered by this method. It must be called before initialize() method
+     *
      * @param clazz
      */
     public static void registerModelClass(Class<? extends BaseModel> clazz) {
@@ -52,7 +54,6 @@ public final class SimpleDroidDao {
     }
 
     static class DatabaseHelper extends SQLiteOpenHelper {
-
         DatabaseHelper(Context context) {
 
             super(context, sDatabaseName, null, sDatabaseVersion);
@@ -101,6 +102,7 @@ public final class SimpleDroidDao {
 
                 // turn on foreign keys
                 db.execSQL("PRAGMA foreign_keys=ON;");
+                db.execSQL("PRAGMA read_uncommitted=true;");
             }
         }
     }
@@ -115,19 +117,13 @@ public final class SimpleDroidDao {
         db.execSQL("drop table if exists " + GenericModel.getTableName(clazz));
     }
 
-    public static SQLiteDatabase getOpenedDatabase(Class clazz) {
-
-        return sDatabaseHelper.getWritableDatabase();
-    }
-
-    public static SQLiteDatabase getOpenedDatabaseForReading() {
-
-        return sDatabaseHelper.getReadableDatabase();
-    }
-
     static SQLiteDatabase getOpenedDatabase() {
 
-        return sDatabaseHelper.getWritableDatabase();
+        if (sWritableDatabase == null) {
+            sWritableDatabase = sDatabaseHelper.getWritableDatabase();
+            sWritableDatabase.setLockingEnabled(false);
+        }
+        return sWritableDatabase;
     }
 
     public interface IUpgradeHandler {

@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Build;
 import android.util.Log;
 import eu.janmuller.android.dao.exceptions.ConstraintExceptionFactory;
 import eu.janmuller.android.dao.exceptions.DaoConstraintException;
@@ -40,6 +41,20 @@ public abstract class GenericModel<T extends BaseModel> {
         getSQLiteDatabase().beginTransaction();
     }
 
+    /**
+     * Begin non-exclusive transaction, if the API is 11 and higher. If API < 11, then exclusive transaction is used
+     */
+    public static void beginNonExclusiveTx() {
+
+        if (android.os.Build.VERSION.SDK_INT >= 11) {
+
+            getSQLiteDatabase().beginTransactionNonExclusive();
+        } else {
+
+            beginTx();
+        }
+    }
+
     public static void endTx() {
 
         getSQLiteDatabase().endTransaction();
@@ -57,7 +72,7 @@ public abstract class GenericModel<T extends BaseModel> {
             throw new SimpleDroidDaoException("no id specified");
         }
 
-        Cursor cursor = getSQLiteDatabaseForReading().rawQuery("SELECT * FROM " + getTableName(clazz)
+        Cursor cursor = getSQLiteDatabase().rawQuery("SELECT * FROM " + getTableName(clazz)
                 + " WHERE " + SimpleDaoSystemFieldsEnum.ID + "=? LIMIT 1", new String[]{id.getId().toString()});
 
         if (cursor == null) {
@@ -88,28 +103,25 @@ public abstract class GenericModel<T extends BaseModel> {
 
     public static <U extends BaseModel> Cursor getAllObjectsInCursor(Class<U> clazz) {
 
-        return getSQLiteDatabaseForReading().rawQuery("SELECT *, rowid _id FROM " + getTableName(clazz), null);
+        return getSQLiteDatabase().rawQuery("SELECT *, rowid _id FROM " + getTableName(clazz), null);
     }
 
     public static <T extends BaseModel> List<T> getByQuery(Class<T> clazz, String whereClause) {
 
         Cursor cursor = getByQueryInCursor(clazz, whereClause);
-
         return getListFromCursor(clazz, cursor);
     }
 
     public static <T extends BaseModel> Cursor getByQueryInCursor(Class<T> clazz, String whereClause) {
 
         String selectQuery = "SELECT *, rowid _id FROM " + getTableName(clazz) + " WHERE " + whereClause;
-
-        return getSQLiteDatabaseForReading().rawQuery(selectQuery, null);
+        return getSQLiteDatabase().rawQuery(selectQuery, null);
     }
 
     public static <T extends BaseModel> int getCountByQuery(Class<T> clazz, String whereClause) {
 
         String selectQuery = "SELECT COUNT(1) FROM " + getTableName(clazz) + " WHERE " + whereClause;
-
-        Cursor c = getSQLiteDatabaseForReading().rawQuery(selectQuery, null);
+        Cursor c = getSQLiteDatabase().rawQuery(selectQuery, null);
 
         if (c == null) {
 
@@ -221,7 +233,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         bdm = (BaseDateModel) this;
 
                         if (bdm.updateModifiedDate) {
-                            
+
                             cv.put(sdsfe.getName(), now.getTime());
                             bdm.modifiedDate = now;
                         }
@@ -597,22 +609,9 @@ public abstract class GenericModel<T extends BaseModel> {
         return sql;
     }
 
-    /**
-     * Vraci instanci objektu pro praci s DB
-     */
-    protected static SQLiteDatabase getSQLiteDatabase(Class clazz) {
-
-        return SimpleDroidDao.getOpenedDatabase(clazz);
-    }
-
-    private static SQLiteDatabase getSQLiteDatabase() {
+    public static SQLiteDatabase getSQLiteDatabase() {
 
         return SimpleDroidDao.getOpenedDatabase();
-    }
-
-    public static SQLiteDatabase getSQLiteDatabaseForReading() {
-
-        return SimpleDroidDao.getOpenedDatabaseForReading();
     }
 
     public static <T extends BaseModel> Map<Id, T> getAllObjectsAsMap(Class<T> clazz) {
@@ -639,14 +638,12 @@ public abstract class GenericModel<T extends BaseModel> {
 
         T object = (T) this;
 
-        boolean isUpdate = false;
-
         try {
             // pokud nema objekt vyplnene id, pak vytvarime novy zaznam do DB
             if (((AbstractId) object.id).operationType() == AbstractId.OperationType.CREATE) {
 
                 // insertujem do db
-                long id = getSQLiteDatabase(this.getClass()).insertOrThrow(getTableName(object.getClass()), null, cv);
+                long id = getSQLiteDatabase().insertOrThrow(getTableName(object.getClass()), null, cv);
 
                 // pokud nedoslo k chybe
                 if (id != -1) {
@@ -671,10 +668,7 @@ public abstract class GenericModel<T extends BaseModel> {
             } else {
 
                 // pokud jiz existuje id, pak provedem update
-                long updatedID = getSQLiteDatabase(this.getClass()).update(getTableName(object.getClass()), cv, SimpleDaoSystemFieldsEnum.ID.getName() + "='" + object.id + "'", null);
-
-                isUpdate = true;
-
+                long updatedID = getSQLiteDatabase().update(getTableName(object.getClass()), cv, SimpleDaoSystemFieldsEnum.ID.getName() + "='" + object.id + "'", null);
                 // pokud update probehl v poradku
                 if (updatedID > 0) {
 
@@ -699,13 +693,11 @@ public abstract class GenericModel<T extends BaseModel> {
     protected static <T extends BaseModel> List<T> getListFromCursor(Class<T> clazz, Cursor cursor) {
 
         List<T> list = new ArrayList<T>();
-
         // pokud je cursor nullovy, pak vratime prazdny seznam
         if (cursor == null) {
 
             return list;
         }
-
         try {
 
             // pokud v kurzoru je alespon jeden zaznam
@@ -715,7 +707,6 @@ public abstract class GenericModel<T extends BaseModel> {
                 do {
 
                     // vytvor objekt
-
                     T object = getObjectFromCursor(clazz, cursor);
 
                     // a pridej ho do seznamu
@@ -734,21 +725,20 @@ public abstract class GenericModel<T extends BaseModel> {
 
     static <T extends BaseModel> void createTable(Class<T> clazz) {
 
-        getSQLiteDatabase(clazz).execSQL(getCreateTableSQL(clazz));
+        getSQLiteDatabase().execSQL(getCreateTableSQL(clazz));
     }
 
     static <T extends BaseModel> void dropTable(Class<T> clazz) {
 
-        getSQLiteDatabase(clazz).execSQL("drop table if exists " + getTableName(clazz));
+        getSQLiteDatabase().execSQL("drop table if exists " + getTableName(clazz));
     }
 
     public void delete() throws DaoConstraintException {
 
         BaseModel bm = (BaseModel) this;
-
         try {
 
-            getSQLiteDatabase(this.getClass()).delete(getTableName(getClass()), SimpleDaoSystemFieldsEnum.ID + "=?",
+            getSQLiteDatabase().delete(getTableName(getClass()), SimpleDaoSystemFieldsEnum.ID + "=?",
                     new String[]{bm.id.toString()});
         } catch (SQLiteConstraintException sce) {
 
@@ -780,7 +770,7 @@ public abstract class GenericModel<T extends BaseModel> {
 
             try {
 
-                getSQLiteDatabase(clazz).delete(getTableName(clazz), null, null);
+                getSQLiteDatabase().delete(getTableName(clazz), null, null);
             } catch (SQLiteConstraintException sce) {
 
                 throw new DaoConstraintException(DaoConstraintException.ConstraintsExceptionType.DELETE, sce);
@@ -806,7 +796,7 @@ public abstract class GenericModel<T extends BaseModel> {
 
             try {
 
-                getSQLiteDatabase(clazz).delete(getTableName(clazz), whereClause, null);
+                getSQLiteDatabase().delete(getTableName(clazz), whereClause, null);
             } catch (SQLiteConstraintException sce) {
 
                 throw new DaoConstraintException(DaoConstraintException.ConstraintsExceptionType.DELETE, sce);
@@ -870,6 +860,7 @@ public abstract class GenericModel<T extends BaseModel> {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
     public @interface Entity {
+
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -909,6 +900,7 @@ public abstract class GenericModel<T extends BaseModel> {
         private String name;
 
         private SimpleDaoSystemFieldsEnum(String name) {
+
             this.name = name;
         }
 
@@ -935,16 +927,19 @@ public abstract class GenericModel<T extends BaseModel> {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
     public @interface Index {
+
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
     public @interface Unique {
+
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
     public @interface NotNull {
+
     }
 
     @Retention(RetentionPolicy.RUNTIME)
