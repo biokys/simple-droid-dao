@@ -26,13 +26,14 @@ import java.util.*;
  */
 public abstract class GenericModel<T extends BaseModel> {
 
-    private static Map<Class, IdTypeEnum>                 sIdTypeEnumMap      = new HashMap<Class, IdTypeEnum>();
-    private static Map<Class, String>                     sTableNameMap       = new HashMap<Class, String>();
-    private static Map<String, DataTypeEnum>              sDataTypeCache      = new HashMap<String, DataTypeEnum>();
-    private static Map<String, SimpleDaoSystemFieldsEnum> sInternalFieldCache = new HashMap<String, SimpleDaoSystemFieldsEnum>();
-    private static Map<Class, List<Field>>                sFieldsCache        = new HashMap<Class, List<Field>>();
-    private static Map<String, Object[]>                  sEnumCache          = new HashMap<String, Object[]>();
-    private static Date                                   sDate               = new Date();
+    private static Map<Class, IdTypeEnum>                 sIdTypeEnumMap         = new HashMap<Class, IdTypeEnum>();
+    private static Map<Class, String>                     sTableNameMap          = new HashMap<Class, String>();
+    private static Map<Class, Boolean>                    sExcludeFromNtfNameMap = new HashMap<Class, Boolean>();
+    private static Map<String, DataTypeEnum>              sDataTypeCache         = new HashMap<String, DataTypeEnum>();
+    private static Map<String, SimpleDaoSystemFieldsEnum> sInternalFieldCache    = new HashMap<String, SimpleDaoSystemFieldsEnum>();
+    private static Map<Class, List<Field>>                sFieldsCache           = new HashMap<Class, List<Field>>();
+    private static Map<String, Object[]>                  sEnumCache             = new HashMap<String, Object[]>();
+    private static Date                                   sDate                  = new Date();
 
     private transient SimpleDroidDaoEventMonitor mEventMonitor = SimpleDroidDaoEventMonitor.getInstance();
 
@@ -654,7 +655,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         object.id = new LongId(id);
                     }
 
-                    if (!fastWithoutNotification) {
+                    if (!fastWithoutNotification || !excludeFromNotifier(object.getClass())) {
 
                         mEventMonitor.notifyOnCreateObject(object);
                     }
@@ -672,7 +673,7 @@ public abstract class GenericModel<T extends BaseModel> {
                 // pokud update probehl v poradku
                 if (updatedID > 0) {
 
-                    if (!fastWithoutNotification) {
+                    if (!fastWithoutNotification || !excludeFromNotifier(object.getClass())) {
 
                         mEventMonitor.notifyOnUpdateObject(object);
                     }
@@ -745,7 +746,9 @@ public abstract class GenericModel<T extends BaseModel> {
             throw new DaoConstraintException(DaoConstraintException.ConstraintsExceptionType.DELETE, sce);
         }
 
-        mEventMonitor.notifyOnDeleteObject(bm);
+        if (!excludeFromNotifier(getClass())) {
+            mEventMonitor.notifyOnDeleteObject(bm);
+        }
 
         bm.id = null;
     }
@@ -830,6 +833,17 @@ public abstract class GenericModel<T extends BaseModel> {
         return tableName;
     }
 
+    private static boolean excludeFromNotifier(Class<?> clazz) {
+
+        Boolean exclude = sExcludeFromNtfNameMap.get(clazz);
+        if (exclude == null) {
+
+            exclude = clazz.isAnnotationPresent(ExcludeFromNotifiers.class);
+            sExcludeFromNtfNameMap.put(clazz, exclude);
+        }
+        return exclude;
+    }
+
 
     private static <T extends BaseModel> IdTypeEnum getIdType(Class<?> clazz) {
 
@@ -860,6 +874,12 @@ public abstract class GenericModel<T extends BaseModel> {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
     public @interface Entity {
+
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE})
+    public @interface ExcludeFromNotifiers {
 
     }
 
