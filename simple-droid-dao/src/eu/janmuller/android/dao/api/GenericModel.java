@@ -655,7 +655,7 @@ public abstract class GenericModel<T extends BaseModel> {
                         object.id = new LongId(id);
                     }
 
-                    if (!fastWithoutNotification || !excludeFromNotifier(object.getClass())) {
+                    if (!(fastWithoutNotification || excludeFromNotifier(object.getClass()))) {
 
                         mEventMonitor.notifyOnCreateObject(object);
                     }
@@ -673,7 +673,7 @@ public abstract class GenericModel<T extends BaseModel> {
                 // pokud update probehl v poradku
                 if (updatedID > 0) {
 
-                    if (!fastWithoutNotification || !excludeFromNotifier(object.getClass())) {
+                    if (!(fastWithoutNotification || excludeFromNotifier(object.getClass()))) {
 
                         mEventMonitor.notifyOnUpdateObject(object);
                     }
